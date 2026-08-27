@@ -667,17 +667,30 @@ export const blockRegistry: BlockDefinition[] = [
       backgroundColor: '#ffffff',
     },
     render(data: Record<string, any>, styles: SectionStyles): string {
-      const isFullPage = /^\s*<!doctype/i.test(data.html || '') || /^\s*<html/i.test(data.html || '')
+      const raw = data.html || ''
+      const isFullPage = /^\s*<!doctype/i.test(raw) || /^\s*<html/i.test(raw)
 
-      if (isFullPage) {
-        // HTML completo: renderiza via iframe com srcdoc para evitar nesting inválido
-        const escaped = (data.html || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;')
-        return `<iframe srcdoc="${escaped}" style="width:100%;height:100vh;border:none;display:block;" scrolling="yes" title="Página customizada"></iframe>`
+      if (!isFullPage) {
+        // HTML parcial: injeta CSS e retorna direto
+        const styleTag = data.css ? `<style>${data.css}</style>` : ''
+        return `${styleTag}${raw}`
       }
 
-      // HTML parcial: injeta CSS e retorna direto
-      const styleTag = data.css ? `<style>${data.css}</style>` : ''
-      return `${styleTag}${data.html || ''}`
+      // Documento completo: extrai <style>/<link rel=stylesheet>/<script> do <head>
+      // e o conteúdo do <body>, e injeta tudo direto no DOM da página (sem <iframe>).
+      // Iframes ignoram <meta name="viewport">, então renderizar em iframe fazia a
+      // página abrir sempre no layout desktop e só encolher — mesmo com media
+      // queries corretas no HTML importado.
+      const headMatch = raw.match(/<head[^>]*>([\s\S]*?)<\/head>/i)
+      const bodyMatch = raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
+      const headContent = headMatch ? headMatch[1] : ''
+      const bodyContent = bodyMatch ? bodyMatch[1] : raw
+
+      const headAssets = (
+        headContent.match(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>|<link[^>]*rel=["']?stylesheet["']?[^>]*>/gi) || []
+      ).join('\n')
+
+      return `${headAssets}\n${bodyContent}`
     },
   },
 ];
