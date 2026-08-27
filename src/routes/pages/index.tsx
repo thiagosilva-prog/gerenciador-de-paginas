@@ -59,7 +59,7 @@ export default function PagesIndex() {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in max-w-6xl mx-auto p-8">
+    <div className="space-y-8 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

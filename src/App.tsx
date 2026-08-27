@@ -5,6 +5,7 @@ import { queryClient } from "./lib/queryClient";
 
 import Login from "./routes/login";
 import RequireAuth from "./routes/RequireAuth";
+import Layout from "./routes/Layout";
 import PagesIndex from "./routes/pages/index";
 import PagesDetail from "./routes/pages/detail";
 import PagesEditor from "./routes/pages/editor";
@@ -20,9 +21,13 @@ export default function App() {
           <Route path="/p/:slug" element={<PagePreview />} />
 
           <Route element={<RequireAuth />}>
-            <Route path="/pages" element={<PagesIndex />} />
-            <Route path="/pages/:id" element={<PagesDetail />} />
+            {/* Editor fica fora do Layout — precisa da tela inteira */}
             <Route path="/pages/:id/editor" element={<PagesEditor />} />
+
+            <Route element={<Layout />}>
+              <Route path="/pages" element={<PagesIndex />} />
+              <Route path="/pages/:id" element={<PagesDetail />} />
+            </Route>
           </Route>
         </Routes>
       </BrowserRouter>
