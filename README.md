@@ -12,7 +12,10 @@ Postgres + Blob) em vez de Supabase.
   undo/redo.
 - **Detalhe da página** (`/pages/:id`) — abas de Resumo, Leads, Integrações
   (Facebook Pixel, GA, GTM, scripts customizados) e Domínio/SEO.
-- **Página pública** (`/p/:slug`) — renderiza o HTML publicado.
+- **Página pública** (`/p/:slug`) — servida direto por `api/render-page.ts`
+  (rewrite no `vercel.json`, antes de chegar no React), devolvendo o HTML já
+  pronto salvo em `pages.html` no publish. Sem SPA, sem round-trip de fetch
+  no cliente — carrega no primeiro request.
 - **Captura de leads** — o formulário publicado faz `POST /api/leads`
   diretamente (funciona mesmo em domínio customizado, CORS liberado), com
   geolocalização automática (país/cidade/estado) via headers da Vercel.
@@ -105,3 +108,11 @@ npx vercel --prod
 - O envio de eventos pro Facebook CAPI (server-side) que existia em outro
   fluxo do KVision não foi trazido — só o Pixel client-side (via script de
   integração, aba "Integrações").
+
+## Domínio customizado
+
+Se você conectar um domínio próprio ao projeto (Vercel → Settings → Domains)
+e quiser que o link público exibido/copiado no admin sempre use esse domínio
+— em vez do `*.vercel.app` (o que depende de qual URL você usou pra acessar o
+admin no momento) — defina `VITE_PUBLIC_URL=https://seudominio.com.br` (sem
+barra no final) nas variáveis de ambiente do projeto e redeploy.

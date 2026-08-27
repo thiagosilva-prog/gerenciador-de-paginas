@@ -34,6 +34,8 @@ import { cn } from "../../lib/utils";
 
 type TabType = "resumo" | "relatorio" | "leads" | "integracoes" | "dominio";
 
+const PUBLIC_URL = (import.meta.env.VITE_PUBLIC_URL as string | undefined)?.replace(/\/$/, '') || window.location.origin;
+
 export default function PageDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -203,7 +205,7 @@ export default function PageDetail() {
 
   const handleCopyLink = () => {
     if (!page) return;
-    navigator.clipboard.writeText(`${window.location.origin}/p/${page.slug}`);
+    navigator.clipboard.writeText(`${PUBLIC_URL}/p/${page.slug}`);
     toast.success("Link copiado!");
   };
 
@@ -345,7 +347,7 @@ export default function PageDetail() {
               <p className="text-xs text-muted-foreground mb-1">URL da página</p>
               <div className="flex items-center gap-2">
                 <code className="flex-1 text-[13px] bg-(--card-hover) text-(--text-secondary) px-3 py-2 rounded-[10px] truncate">
-                  {window.location.origin}/p/{page.slug}
+                  {PUBLIC_URL}/p/{page.slug}
                 </code>
                 <button onClick={handleCopyLink} className="p-2 hover:bg-(--card-hover) text-(--text-tertiary) hover:text-(--text-primary) rounded-[10px] transition-colors">
                   <Copy className="w-4 h-4" />

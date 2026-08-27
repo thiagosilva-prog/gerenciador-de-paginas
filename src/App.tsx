@@ -9,7 +9,6 @@ import Layout from "./routes/Layout";
 import PagesIndex from "./routes/pages/index";
 import PagesDetail from "./routes/pages/detail";
 import PagesEditor from "./routes/pages/editor";
-import PagePreview from "./routes/public/PagePreview";
 
 export default function App() {
   return (
@@ -18,7 +17,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/pages" replace />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/p/:slug" element={<PagePreview />} />
+          {/* /p/:slug é servido pelo api/render-page.ts (ver vercel.json) — nunca chega ao React */}
 
           <Route element={<RequireAuth />}>
             {/* Editor fica fora do Layout — precisa da tela inteira */}
