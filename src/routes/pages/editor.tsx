@@ -335,11 +335,10 @@ fbq('track', '${fbEvent}');
       }
 
       // Microsoft Clarity
-      if (integrations.clarity?.enabled && integrations.clarity.projectId) {
-        const clarityId = integrations.clarity.projectId
+      if (integrations.clarity?.enabled && integrations.clarity.code) {
         headScripts += `
 <!-- Microsoft Clarity -->
-<script>(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","${clarityId}");</script>
+${integrations.clarity.code}
 `
       }
 

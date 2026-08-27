@@ -28,7 +28,7 @@ export interface PageIntegrations {
   }
   clarity?: {
     enabled: boolean
-    projectId: string           // ID do projeto no Microsoft Clarity
+    code: string                // Snippet <script> completo, colado direto do Clarity
   }
 }
 

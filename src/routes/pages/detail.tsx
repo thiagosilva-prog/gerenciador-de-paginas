@@ -684,16 +684,17 @@ export default function PageDetail() {
             {integrations.clarity?.enabled && (
               <div className="mt-5 border-t border-gray-100 pt-4">
                 <label className="text-sm font-medium text-gray-700 block mb-1.5">
-                  ID do projeto Clarity <span className="text-red-500">*</span>
+                  Código do Clarity <span className="text-red-500">*</span>
                 </label>
-                <Input
-                  value={integrations.clarity?.projectId || ''}
-                  onChange={e => updateIntegration('clarity', 'projectId', e.target.value)}
-                  placeholder="Ex: abc1de2fgh"
-                  className="bg-white border-gray-200"
+                <Textarea
+                  value={integrations.clarity?.code || ''}
+                  onChange={e => updateIntegration('clarity', 'code', e.target.value)}
+                  placeholder={'<script type="text/javascript">\n  ...\n</script>'}
+                  rows={7}
+                  className="bg-white border-gray-200 font-mono text-xs"
                 />
                 <p className="text-xs text-gray-400 mt-1">
-                  Encontre em clarity.microsoft.com → seu projeto → Settings → Setup.
+                  Cole aqui o snippet completo de clarity.microsoft.com → seu projeto → Settings → Setup → "Copiar para área de transferência".
                 </p>
               </div>
             )}
