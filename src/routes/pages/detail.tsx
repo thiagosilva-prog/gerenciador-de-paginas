@@ -668,6 +668,37 @@ export default function PageDetail() {
             )}
           </div>
 
+          {/* ── MICROSOFT CLARITY ── */}
+          <div className="border border-gray-200 rounded-xl p-5 bg-white">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="font-semibold text-gray-900 text-[15px]">Integração com Microsoft Clarity</h3>
+                <p className="text-sm text-gray-500 mt-0.5">Gravação de sessões e mapas de calor com o Microsoft Clarity</p>
+              </div>
+              <Switch
+                checked={integrations.clarity?.enabled || false}
+                onCheckedChange={v => updateIntegration('clarity', 'enabled', v)}
+                className="data-[state=checked]:bg-[#FBB03B]"
+              />
+            </div>
+            {integrations.clarity?.enabled && (
+              <div className="mt-5 border-t border-gray-100 pt-4">
+                <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                  ID do projeto Clarity <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  value={integrations.clarity?.projectId || ''}
+                  onChange={e => updateIntegration('clarity', 'projectId', e.target.value)}
+                  placeholder="Ex: abc1de2fgh"
+                  className="bg-white border-gray-200"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Encontre em clarity.microsoft.com → seu projeto → Settings → Setup.
+                </p>
+              </div>
+            )}
+          </div>
+
           {/* ── JAVASCRIPT E CSS ── */}
           <div className="border border-gray-200 rounded-xl p-5 bg-white mt-8">
             <div className="flex items-center justify-between mb-4">

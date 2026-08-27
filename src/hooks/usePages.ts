@@ -26,6 +26,10 @@ export interface PageIntegrations {
     enabled: boolean
     containerId: string         // GTM-XXXXXXX
   }
+  clarity?: {
+    enabled: boolean
+    projectId: string           // ID do projeto no Microsoft Clarity
+  }
 }
 
 export interface Page {
