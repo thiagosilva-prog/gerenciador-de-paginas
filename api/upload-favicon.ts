@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { put } from '@vercel/blob'
-import { requireAuth } from './_lib/session'
+import { requireAuth } from './_lib/session.js'
 
 async function bufferStream(req: VercelRequest): Promise<Buffer> {
   const chunks: Buffer[] = []
