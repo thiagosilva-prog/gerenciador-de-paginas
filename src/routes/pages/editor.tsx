@@ -46,9 +46,18 @@ export default function PagesEditor() {
   const [pageName, setPageName] = useState('')
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [uploadingImageKey, setUploadingImageKey] = useState<string | null>(null)
+  const imageFileInputRef = useRef<HTMLInputElement>(null)
+  const pendingImageUploadRef = useRef<{ key: string; onChange: (val: string) => void } | null>(null)
 
-  async function handleImageUpload(fieldKey: string, file: File, onChange: (val: string) => void) {
-    setUploadingImageKey(fieldKey)
+  function requestImageUpload(fieldKey: string, onChange: (val: string) => void) {
+    pendingImageUploadRef.current = { key: fieldKey, onChange }
+    imageFileInputRef.current?.click()
+  }
+
+  async function handleImageFileSelected(file: File) {
+    const pending = pendingImageUploadRef.current
+    if (!pending) return
+    setUploadingImageKey(pending.key)
     try {
       const res = await fetch(`/api/upload-image?filename=${encodeURIComponent(file.name)}`, {
         method: 'POST',
@@ -56,7 +65,7 @@ export default function PagesEditor() {
       })
       if (!res.ok) throw new Error('upload failed')
       const { url } = await res.json()
-      onChange(url)
+      pending.onChange(url)
     } catch {
       toast.error('Erro ao enviar imagem. Tente colar uma URL.')
     } finally {
@@ -459,23 +468,13 @@ ${integrations.clarity.code}
         )
       case 'image': {
         const isUploading = uploadingImageKey === field.key
-        const pickFile = () => {
-          const input = document.createElement('input')
-          input.type = 'file'
-          input.accept = 'image/*,.webp'
-          input.onchange = () => {
-            const file = input.files?.[0]
-            if (file) handleImageUpload(field.key, file, onChange)
-          }
-          input.click()
-        }
         return (
           <div className="space-y-2">
             <div className="flex gap-2">
               <Input value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder="URL da imagem" className="h-8 text-[13px] bg-white border-gray-200 text-gray-900" />
               <button
                 type="button"
-                onClick={pickFile}
+                onClick={() => requestImageUpload(field.key, onChange)}
                 disabled={isUploading}
                 title="Enviar imagem (aceita webp, png, jpg...)"
                 className="h-8 px-2.5 flex items-center gap-1 shrink-0 rounded-md border border-gray-200 text-[12px] text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -901,16 +900,7 @@ ${integrations.clarity.code}
                                 <button
                                   type="button"
                                   disabled={uploadingImageKey === 'sectionBackgroundImage'}
-                                  onClick={() => {
-                                    const input = document.createElement('input')
-                                    input.type = 'file'
-                                    input.accept = 'image/*,.webp'
-                                    input.onchange = () => {
-                                      const file = input.files?.[0]
-                                      if (file) handleImageUpload('sectionBackgroundImage', file, (url) => updateBlockStyles(editingBlock.id, { backgroundImage: url }))
-                                    }
-                                    input.click()
-                                  }}
+                                  onClick={() => requestImageUpload('sectionBackgroundImage', (url) => updateBlockStyles(editingBlock.id, { backgroundImage: url }))}
                                   title="Enviar imagem (aceita webp, png, jpg...)"
                                   className="h-8 px-2.5 flex items-center gap-1 shrink-0 rounded-md border border-gray-200 text-[12px] text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
@@ -1078,6 +1068,18 @@ ${integrations.clarity.code}
           </div>
         </SheetContent>
       </Sheet>
+
+      <input
+        ref={imageFileInputRef}
+        type="file"
+        accept="image/*,.webp"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) handleImageFileSelected(file)
+          e.target.value = ''
+        }}
+      />
 
       <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
         <AlertDialogContent>
