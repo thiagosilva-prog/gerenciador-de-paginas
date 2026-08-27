@@ -18,7 +18,7 @@ import { ScrollArea } from '../../components/ui/scroll-area'
 import { 
   ArrowLeft, Monitor, Smartphone, Eye, EyeOff,
   Trash2, ChevronUp, ChevronDown, Undo2, Redo2,
-  Plus, Search, GripVertical, Pencil, Globe, X, Copy
+  Plus, Search, GripVertical, Pencil, Globe, X, Copy, Upload
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '../../lib/utils'
@@ -45,6 +45,24 @@ export default function PagesEditor() {
   const [isEditingName, setIsEditingName] = useState(false)
   const [pageName, setPageName] = useState('')
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [uploadingImageKey, setUploadingImageKey] = useState<string | null>(null)
+
+  async function handleImageUpload(fieldKey: string, file: File, onChange: (val: string) => void) {
+    setUploadingImageKey(fieldKey)
+    try {
+      const res = await fetch(`/api/upload-image?filename=${encodeURIComponent(file.name)}`, {
+        method: 'POST',
+        body: file,
+      })
+      if (!res.ok) throw new Error('upload failed')
+      const { url } = await res.json()
+      onChange(url)
+    } catch {
+      toast.error('Erro ao enviar imagem. Tente colar uma URL.')
+    } finally {
+      setUploadingImageKey(null)
+    }
+  }
 
   type SelectedElement = { blockId: string; key: string; type: 'text' | 'shape' } | null
   const [selectedElement, setSelectedElement] = useState<SelectedElement>(null)
@@ -439,11 +457,42 @@ ${integrations.clarity.code}
             </button>
           </div>
         )
+      case 'image': {
+        const isUploading = uploadingImageKey === field.key
+        const pickFile = () => {
+          const input = document.createElement('input')
+          input.type = 'file'
+          input.accept = 'image/*,.webp'
+          input.onchange = () => {
+            const file = input.files?.[0]
+            if (file) handleImageUpload(field.key, file, onChange)
+          }
+          input.click()
+        }
+        return (
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Input value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder="URL da imagem" className="h-8 text-[13px] bg-white border-gray-200 text-gray-900" />
+              <button
+                type="button"
+                onClick={pickFile}
+                disabled={isUploading}
+                title="Enviar imagem (aceita webp, png, jpg...)"
+                className="h-8 px-2.5 flex items-center gap-1 shrink-0 rounded-md border border-gray-200 text-[12px] text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Upload className="w-3.5 h-3.5" /> {isUploading ? 'Enviando...' : 'Upload'}
+              </button>
+            </div>
+            {value && (
+              <img src={value} alt="" className="h-16 rounded-md border border-gray-200 object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+            )}
+          </div>
+        )
+      }
       case 'text':
       case 'url':
-      case 'image':
       default:
-        return <Input value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder={field.type === 'image' ? 'URL da Imagem' : ''} className="h-8 text-[13px] bg-white border-gray-200 text-gray-900" />
+        return <Input value={value || ''} onChange={(e) => onChange(e.target.value)} className="h-8 text-[13px] bg-white border-gray-200 text-gray-900" />
     }
   }
 
@@ -846,8 +895,28 @@ ${integrations.clarity.code}
                        
                        <TabsContent value="secao" className="p-4 m-0 space-y-4">
                           <div className="space-y-1.5">
-                             <label className="text-[12px] text-gray-600 font-medium tracking-normal">Imagem de Fundo (URL)</label>
-                             <Input value={editingBlock.sectionStyles.backgroundImage || ''} onChange={(e) => updateBlockStyles(editingBlock.id, { backgroundImage: e.target.value })} placeholder="Ex: https://..." className="bg-white border-gray-200 text-gray-900 h-8 text-[13px]" />
+                             <label className="text-[12px] text-gray-600 font-medium tracking-normal">Imagem de Fundo</label>
+                             <div className="flex gap-2">
+                                <Input value={editingBlock.sectionStyles.backgroundImage || ''} onChange={(e) => updateBlockStyles(editingBlock.id, { backgroundImage: e.target.value })} placeholder="URL da imagem" className="bg-white border-gray-200 text-gray-900 h-8 text-[13px]" />
+                                <button
+                                  type="button"
+                                  disabled={uploadingImageKey === 'sectionBackgroundImage'}
+                                  onClick={() => {
+                                    const input = document.createElement('input')
+                                    input.type = 'file'
+                                    input.accept = 'image/*,.webp'
+                                    input.onchange = () => {
+                                      const file = input.files?.[0]
+                                      if (file) handleImageUpload('sectionBackgroundImage', file, (url) => updateBlockStyles(editingBlock.id, { backgroundImage: url }))
+                                    }
+                                    input.click()
+                                  }}
+                                  title="Enviar imagem (aceita webp, png, jpg...)"
+                                  className="h-8 px-2.5 flex items-center gap-1 shrink-0 rounded-md border border-gray-200 text-[12px] text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  <Upload className="w-3.5 h-3.5" /> {uploadingImageKey === 'sectionBackgroundImage' ? 'Enviando...' : 'Upload'}
+                                </button>
+                             </div>
                           </div>
                           
                           <div className="space-y-1.5">
