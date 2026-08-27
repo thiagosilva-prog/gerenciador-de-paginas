@@ -73,6 +73,48 @@ export default function PagesEditor() {
     }
   }
 
+  const [isImportingHtml, setIsImportingHtml] = useState(false)
+  const htmlImportInputRef = useRef<HTMLInputElement>(null)
+  const pendingHtmlImportOnChangeRef = useRef<((val: string) => void) | null>(null)
+
+  function requestHtmlImport(onChange: (val: string) => void) {
+    pendingHtmlImportOnChangeRef.current = onChange
+    htmlImportInputRef.current?.click()
+  }
+
+  async function handleHtmlImportFilesSelected(files: FileList) {
+    const onChange = pendingHtmlImportOnChangeRef.current
+    if (!onChange) return
+
+    const fileArr = Array.from(files)
+    const htmlFile = fileArr.find((f) => f.name.toLowerCase().endsWith('.html'))
+    if (!htmlFile) {
+      toast.error('Selecione o arquivo .html junto com as imagens.')
+      return
+    }
+    const imageFiles = fileArr.filter((f) => /\.(webp|png|jpe?g|gif|svg|avif)$/i.test(f.name))
+
+    setIsImportingHtml(true)
+    try {
+      let html = await htmlFile.text()
+      for (const img of imageFiles) {
+        const res = await fetch(`/api/upload-image?filename=${encodeURIComponent(img.name)}`, {
+          method: 'POST',
+          body: img,
+        })
+        if (!res.ok) throw new Error(`Falha ao enviar ${img.name}`)
+        const { url } = await res.json()
+        html = html.split(img.name).join(url)
+      }
+      onChange(html)
+      toast.success(`HTML importado com ${imageFiles.length} imagem(ns) enviada(s).`)
+    } catch {
+      toast.error('Erro ao importar. Verifique os arquivos e tente novamente.')
+    } finally {
+      setIsImportingHtml(false)
+    }
+  }
+
   type SelectedElement = { blockId: string; key: string; type: 'text' | 'shape' } | null
   const [selectedElement, setSelectedElement] = useState<SelectedElement>(null)
   const GOOGLE_FONTS = ['Inter', 'Roboto', 'Poppins', 'Montserrat', 'Playfair Display', 'Lato', 'Open Sans', 'Oswald', 'Raleway', 'Merriweather']
@@ -420,6 +462,24 @@ ${integrations.clarity.code}
   const renderField = (field: FieldSchema, value: any, onChange: (val: any) => void, blockId: string) => {
     switch (field.type) {
       case 'textarea':
+        if (field.key === 'html') {
+          return (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => requestHtmlImport(onChange)}
+                disabled={isImportingHtml}
+                className="w-full h-8 flex items-center justify-center gap-1.5 rounded-md border border-dashed border-gray-300 text-[12px] text-gray-500 hover:border-[#FBB03B] hover:text-[#FBB03B] disabled:opacity-50 disabled:cursor-not-allowed transition-colors bg-white"
+              >
+                <Upload className="w-3.5 h-3.5" /> {isImportingHtml ? 'Importando...' : 'Importar .html + imagens'}
+              </button>
+              <p className="text-[11px] text-gray-400">
+                Selecione o arquivo .html junto com as imagens da mesma pasta (Ctrl+A no seletor). Os nomes das imagens usados no HTML (ex: dre.webp) são trocados automaticamente pelos links depois do upload.
+              </p>
+              <Textarea value={value || ''} onChange={(e) => onChange(e.target.value)} rows={4} className="text-[13px] bg-white border-gray-200 text-gray-900" />
+            </div>
+          )
+        }
         return <Textarea value={value || ''} onChange={(e) => onChange(e.target.value)} rows={4} className="text-[13px] bg-white border-gray-200 text-gray-900" />
       case 'boolean':
         return <Switch checked={!!value} onCheckedChange={onChange} />
@@ -1077,6 +1137,19 @@ ${integrations.clarity.code}
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (file) handleImageFileSelected(file)
+          e.target.value = ''
+        }}
+      />
+
+      <input
+        ref={htmlImportInputRef}
+        type="file"
+        accept=".html,image/*,.webp"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const files = e.target.files
+          if (files && files.length > 0) handleHtmlImportFilesSelected(files)
           e.target.value = ''
         }}
       />
