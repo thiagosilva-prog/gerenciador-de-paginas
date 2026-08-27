@@ -424,7 +424,7 @@ export default function PageDetail() {
                 onClick={handleExportCSV}
                 disabled={!leads.length}
                 style={{ backgroundColor: "#1A1A1A", color: "#fff" }}
-                className="gap-2 dark:bg-white dark:text-[#1A1A1A]"
+                className="gap-2"
               >
                 <Download className="w-4 h-4" /> Exportar
               </Button>

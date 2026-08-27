@@ -16,10 +16,9 @@ import { Separator } from '../../components/ui/separator'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../../components/ui/alert-dialog'
 import { ScrollArea } from '../../components/ui/scroll-area'
 import { 
-  ArrowLeft, Monitor, Smartphone, Eye, EyeOff, 
+  ArrowLeft, Monitor, Smartphone, Eye, EyeOff,
   Trash2, ChevronUp, ChevronDown, Undo2, Redo2,
-  Plus, Search, GripVertical, Pencil, Globe, X, Copy,
-  ChevronLeft, ChevronRight
+  Plus, Search, GripVertical, Pencil, Globe, X, Copy
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '../../lib/utils'
@@ -81,13 +80,6 @@ export default function PagesEditor() {
   }
 
   const historyIndexRef = useRef(historyIndex)
-  const categoryScrollRef = useRef<HTMLDivElement>(null)
-
-  const scrollCategories = (dir: 'left' | 'right') => {
-    if (categoryScrollRef.current) {
-      categoryScrollRef.current.scrollBy({ left: dir === 'right' ? 160 : -160, behavior: 'smooth' })
-    }
-  }
 
   useEffect(() => {
     historyIndexRef.current = historyIndex
@@ -395,7 +387,7 @@ ${integrations.clarity.code}
     window.open(url, '_blank')
   }
 
-  if (isLoading) return <div className="p-8 text-center text-slate-500 dark:text-slate-400">Buscando editor...</div>
+  if (isLoading) return <div className="p-8 text-center text-slate-500">Buscando editor...</div>
   if (!page) return <div className="p-8 text-center text-red-500">Página não encontrada</div>
 
   const renderField = (field: FieldSchema, value: any, onChange: (val: any) => void, blockId: string) => {
@@ -945,89 +937,69 @@ ${integrations.clarity.code}
 
       {/* 5. MODAL DE BLOCOS - Sheet vindo da direita */}
       <Sheet open={showBlockModal} onOpenChange={setShowBlockModal}>
-        <SheetContent side="right" className="w-[640px] sm:max-w-[640px] p-0 flex flex-col border-l border-[#e6e6e6] dark:border-[#2a2a2a] bg-white dark:bg-[#1c1c1e] gap-0">
-          <div className="px-6 py-5 border-b border-[#e6e6e6] dark:border-[#2a2a2a]">
+        <SheetContent side="right" className="w-[640px] sm:max-w-[640px] p-0 flex flex-col border-l border-[#e6e6e6] bg-white gap-0">
+          <div className="px-6 py-5 border-b border-[#e6e6e6]">
              <SheetHeader className="text-left space-y-0">
-                <SheetTitle className="text-[17px] font-semibold text-[#1A1A1A] dark:text-white tracking-[-0.01em] mb-3">Adicionar Bloco</SheetTitle>
+                <SheetTitle className="text-[17px] font-semibold text-[#1A1A1A] tracking-[-0.01em] mb-3">Adicionar Bloco</SheetTitle>
              </SheetHeader>
              <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-2.5 text-[#a3a3a3]" />
-                <Input placeholder="Buscar por nome do bloco..." className="pl-9 h-9 text-[13px] rounded-lg bg-[#f2f2f2] dark:bg-[#2a2a2a] border-transparent focus-visible:ring-[#FBB03B] text-[#1A1A1A] dark:text-white" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                <Input placeholder="Buscar por nome do bloco..." className="pl-9 h-9 text-[13px] rounded-lg bg-[#f2f2f2] border-transparent focus-visible:ring-[#FBB03B] text-[#1A1A1A]" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
              </div>
           </div>
-          
-          <div className="flex-1 flex flex-col overflow-hidden">
-             <div className="flex items-center border-b border-[#e6e6e6] dark:border-[#2a2a2a] px-4 py-2 gap-1">
-               <button
-                 onClick={() => scrollCategories('left')}
-                 className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-[#767676] hover:text-[#1A1A1A] dark:hover:text-white hover:bg-[#f2f2f2] dark:hover:bg-[#2a2a2a] transition-colors"
-               >
-                 <ChevronLeft className="w-4 h-4" />
-               </button>
 
-               <div
-                 ref={categoryScrollRef}
-                 className="flex gap-1.5 overflow-x-auto flex-1"
-                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          <div className="flex-1 flex flex-col overflow-hidden">
+             <div className="flex flex-wrap gap-1.5 border-b border-[#e6e6e6] px-4 py-3">
+               <button
+                 onClick={() => setActiveCategory('vazio')}
+                 className={cn(
+                   "px-3 py-1 rounded-md text-[12px] font-medium whitespace-nowrap h-7 transition-colors",
+                   activeCategory === 'vazio'
+                     ? "bg-[#FBB03B] text-[#1A1A1A]"
+                     : "bg-[#f2f2f2] text-[#767676] hover:bg-[#e6e6e6]"
+                 )}
                >
+                 Bloco Vazio
+               </button>
+               {BLOCK_CATEGORIES.map(cat => (
                  <button
-                   onClick={() => setActiveCategory('vazio')}
+                   key={cat}
+                   onClick={() => setActiveCategory(cat)}
                    className={cn(
-                     "px-3 py-1 rounded-md text-[12px] font-medium whitespace-nowrap h-7 transition-colors shrink-0",
-                     activeCategory === 'vazio'
+                     "px-3 py-1 rounded-md text-[12px] font-medium whitespace-nowrap h-7 transition-colors",
+                     activeCategory === cat
                        ? "bg-[#FBB03B] text-[#1A1A1A]"
-                       : "bg-[#f2f2f2] dark:bg-[#2a2a2a] text-[#767676] hover:bg-[#e6e6e6] dark:hover:bg-[#333]"
+                       : "bg-[#f2f2f2] text-[#767676] hover:bg-[#e6e6e6]"
                    )}
                  >
-                   Bloco Vazio
+                   {cat}
                  </button>
-                 {BLOCK_CATEGORIES.map(cat => (
-                   <button
-                     key={cat}
-                     onClick={() => setActiveCategory(cat)}
-                     className={cn(
-                       "px-3 py-1 rounded-md text-[12px] font-medium whitespace-nowrap h-7 transition-colors shrink-0",
-                       activeCategory === cat
-                         ? "bg-[#FBB03B] text-[#1A1A1A]"
-                         : "bg-[#f2f2f2] dark:bg-[#2a2a2a] text-[#767676] hover:bg-[#e6e6e6] dark:hover:bg-[#333]"
-                     )}
-                   >
-                     {cat}
-                   </button>
-                 ))}
-               </div>
-
-               <button
-                 onClick={() => scrollCategories('right')}
-                 className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-[#767676] hover:text-[#1A1A1A] dark:hover:text-white hover:bg-[#f2f2f2] dark:hover:bg-[#2a2a2a] transition-colors"
-               >
-                 <ChevronRight className="w-4 h-4" />
-               </button>
+               ))}
              </div>
 
-             <div className="flex-1 overflow-y-auto p-6 bg-[#f2f2f2]/30 dark:bg-[#141414]/50">
+             <div className="flex-1 overflow-y-auto p-6 bg-[#f2f2f2]/30">
                 {activeCategory === 'vazio' && searchQuery === '' ? (
                    <div className="flex flex-col items-center justify-center pt-24 text-center">
                        <div className="w-16 h-16 bg-[#FBB03B]/10 rounded-full flex items-center justify-center mb-4">
                            <Plus className="w-8 h-8 text-[#FBB03B]" />
                        </div>
-                       <h3 className="text-[17px] font-semibold text-[#1A1A1A] dark:text-white tracking-[-0.01em] mb-2">Bloco Vazio</h3>
+                       <h3 className="text-[17px] font-semibold text-[#1A1A1A] tracking-[-0.01em] mb-2">Bloco Vazio</h3>
                        <p className="text-[#767676] max-w-sm mb-6 text-[14px]">Use o espaço vazio para codificar layouts do zero. Requer habilidades avançadas.</p>
                    </div>
                 ) : (
-                   <div className="grid grid-cols-2 gap-4">
+                   <div className="grid grid-cols-2 gap-4 content-start">
                        {filteredCategories.map(def => (
-                          <div key={def.type} className="group flex flex-col bg-white dark:bg-[#1c1c1e] border border-[#e6e6e6] dark:border-[#2a2a2a] rounded-xl overflow-hidden hover:border-[#FBB03B] dark:hover:border-[#FBB03B] cursor-pointer transition-all" onClick={() => addBlock(def.type, insertAfterIndex)}>
-                             <div className="w-full aspect-video bg-[#f2f2f2] dark:bg-[#2a2a2a] flex items-center justify-center border-b border-[#e6e6e6] dark:border-[#2a2a2a]" dangerouslySetInnerHTML={{ __html: def.thumbnail }} />
+                          <div key={def.type} className="group flex flex-col bg-white border border-[#e6e6e6] rounded-xl overflow-hidden hover:border-[#FBB03B] cursor-pointer transition-all" onClick={() => addBlock(def.type, insertAfterIndex)}>
+                             <div className="w-full aspect-video bg-[#f2f2f2] flex items-center justify-center border-b border-[#e6e6e6]" dangerouslySetInnerHTML={{ __html: def.thumbnail }} />
                              <div className="flex items-center justify-between px-3 py-2.5">
-                                <span className="text-[13px] font-medium text-[#1A1A1A] dark:text-white">{def.name}</span>
+                                <span className="text-[13px] font-medium text-[#1A1A1A]">{def.name}</span>
                                 <button className="text-[12px] font-semibold bg-[#FBB03B] text-[#1A1A1A] px-2.5 py-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-[#f0a824] transition-all">Usar</button>
                              </div>
                           </div>
                        ))}
                        {filteredCategories.length === 0 && (
                           <div className="col-span-2 py-20 text-center flex flex-col items-center">
-                             <Search className="w-10 h-10 text-[#d1d1d1] dark:text-[#484848] mb-3" />
+                             <Search className="w-10 h-10 text-[#d1d1d1] mb-3" />
                              <p className="text-[#a3a3a3] font-medium text-[13px]">Nenhum bloco encontrado na categoria.</p>
                           </div>
                        )}
