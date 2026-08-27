@@ -57,13 +57,13 @@ npx vercel env pull .env.local
 
 ### 3. Rodar o schema no banco
 
-Copie `db/schema.sql` e rode no SQL editor do Neon/Vercel Postgres, ou:
-
 ```bash
-psql "$POSTGRES_URL" -f db/schema.sql
+npm run db:migrate
 ```
 
-(pegue a `POSTGRES_URL` do `.env.local` gerado no passo 2)
+Isso lê `.env.local` (gerado no passo 2) e roda `db/schema.sql` contra o banco
+conectado. Alternativa manual: copiar `db/schema.sql` e colar no SQL editor do
+Neon (aba Storage → seu banco → Query, na Vercel).
 
 ### 4. Criar seu usuário de login
 
