@@ -4,13 +4,17 @@ import {
   ArrowLeft, Globe, Pencil, Copy, ExternalLink, Download,
   MoreHorizontal, Trash2, BarChart2, FileText, Users,
   MapPin, Link2, Tag, ChevronDown, Eye, EyeOff, Puzzle, Code, Plus, X,
-  ShieldCheck, Search, Sparkles, AlertCircle, CheckCircle2, Info
+  ShieldCheck, Search, Sparkles, AlertCircle, CheckCircle2, Info,
+  TrendingUp, TrendingDown, Settings, SquarePen, Share2, Zap, Lock, Mail
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/skeleton";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
 } from "../../components/ui/dropdown-menu";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
+} from "../../components/ui/dialog";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle
 } from "../../components/ui/sheet";
@@ -27,23 +31,69 @@ import { Separator } from "../../components/ui/separator";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { usePage, useUpdatePage, type PageIntegrations } from "../../hooks/usePages";
+import { usePage, useUpdatePage, useDeletePage, type PageIntegrations, type PageSettings } from "../../hooks/usePages";
 import { useLeads, useDeleteLead, type Lead } from "../../hooks/useLeads";
+import { useReport } from "../../hooks/useReport";
 import { useDomains, useCreateDomain, useDeleteDomain, type Domain } from "../../hooks/useDomains";
 import { cn } from "../../lib/utils";
+import { Safari } from "../../components/ui/safari";
 
 type TabType = "resumo" | "relatorio" | "leads" | "integracoes" | "dominio";
 
 const PUBLIC_URL = (import.meta.env.VITE_PUBLIC_URL as string | undefined)?.replace(/\/$/, '') || window.location.origin;
+
+function pct(current: number, baseline: number): number {
+  if (!baseline) return current ? 100 : 0;
+  return ((current - baseline) / baseline) * 100;
+}
+
+function DeltaBadge({ value }: { value: number }) {
+  const up = value >= 0;
+  return (
+    <span className={cn("inline-flex items-center gap-0.5 text-xs font-medium", up ? "text-emerald-600" : "text-red-500")}>
+      {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+      {up ? "+" : ""}{value.toFixed(1)}%
+    </span>
+  );
+}
+
+// ponytail: sem lib de gráficos no projeto — SVG mínimo com duas linhas, sem eixos/tooltip.
+function MiniLineChart({ series, keys, colors }: {
+  series: { date: string; visitas: number; conversoes: number }[];
+  keys: ("visitas" | "conversoes")[];
+  colors: string[];
+}) {
+  const width = 600;
+  const height = 160;
+  const pad = 8;
+  const maxY = Math.max(1, ...series.flatMap(d => keys.map(k => d[k])));
+
+  const pointsFor = (key: "visitas" | "conversoes") =>
+    series.map((d, i) => {
+      const x = pad + (i / Math.max(1, series.length - 1)) * (width - pad * 2);
+      const y = height - pad - (d[key] / maxY) * (height - pad * 2);
+      return `${x},${y}`;
+    }).join(" ");
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-40" preserveAspectRatio="none">
+      {keys.map((key, i) => (
+        <polyline key={key} points={pointsFor(key)} fill="none" stroke={colors[i]} strokeWidth={2} />
+      ))}
+    </svg>
+  );
+}
 
 export default function PageDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data: page, isLoading } = usePage(id);
   const updatePage = useUpdatePage();
-  const [activeTab, setActiveTab] = React.useState<TabType>("leads");
+  const [activeTab, setActiveTab] = React.useState<TabType>("resumo");
   const [period, setPeriod] = React.useState("all");
   const { data: leads = [], isLoading: leadsLoading } = useLeads(id, period);
+  const { data: report, isLoading: reportLoading } = useReport(id, period);
+  const { data: summaryReport } = useReport(id, "7d");
   const deleteLead = useDeleteLead();
   const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null);
   const [deleteLeadId, setDeleteLeadId] = React.useState<string | null>(null);
@@ -70,17 +120,70 @@ export default function PageDetail() {
   // SEO
   const [seo, setSeo] = React.useState({
     enable_indexing: page?.seo?.enable_indexing ?? true,
+    canonical_enabled: page?.seo?.canonical_enabled ?? false,
     title: page?.seo?.title || '',
     description: page?.seo?.description || '',
     keywords: page?.seo?.keywords || '',
     favicon_url: page?.seo?.favicon_url || '',
+    social_company_name: page?.seo?.social_company_name || '',
+    social_title: page?.seo?.social_title || '',
+    social_description: page?.seo?.social_description || '',
+    social_image_url: page?.seo?.social_image_url || '',
   })
 
   React.useEffect(() => {
     if (page?.domain_id) setSelectedDomainId(page.domain_id)
     if (page?.page_slug) setPageSlug(page.page_slug)
-    if (page?.seo) setSeo({ enable_indexing: true, title: '', description: '', keywords: '', favicon_url: '', ...page.seo })
+    if (page?.seo) setSeo({
+      enable_indexing: true, canonical_enabled: false, title: '', description: '', keywords: '', favicon_url: '',
+      social_company_name: '', social_title: '', social_description: '', social_image_url: '',
+      ...page.seo
+    })
   }, [page?.domain_id, page?.page_slug, page?.seo])
+
+  // Configurações (modal)
+  const deletePage = useDeletePage()
+  const [showSettingsModal, setShowSettingsModal] = React.useState(false)
+  const [settingsSection, setSettingsSection] = React.useState<
+    'info' | 'social' | 'integracoes' | 'jscss' | 'velocidade' | 'lgpd' | 'seguranca' | 'leads'
+  >('info')
+  const [settings, setSettings] = React.useState<PageSettings>(page?.settings || {})
+  const [savingSettings, setSavingSettings] = React.useState(false)
+  const [newLeadEmail, setNewLeadEmail] = React.useState('')
+  const [showRenameDialog, setShowRenameDialog] = React.useState(false)
+  const [renameValue, setRenameValue] = React.useState('')
+  const [savingRename, setSavingRename] = React.useState(false)
+  const [showDeletePageDialog, setShowDeletePageDialog] = React.useState(false)
+
+  React.useEffect(() => {
+    if (page?.settings) setSettings(page.settings)
+  }, [page?.settings])
+
+  const updateSettings = (section: keyof PageSettings, field: string, value: any) => {
+    setSettings(prev => ({ ...prev, [section]: { ...(prev[section] || {}), [field]: value } }))
+  }
+
+  const handleSaveSettings = async () => {
+    setSavingSettings(true)
+    await updatePage.mutateAsync({ id: id!, seo, settings })
+    setSavingSettings(false)
+    toast.success('Configurações salvas!')
+  }
+
+  const handleRenamePage = async () => {
+    if (!renameValue.trim()) return
+    setSavingRename(true)
+    await updatePage.mutateAsync({ id: id!, nome: renameValue.trim() })
+    setSavingRename(false)
+    setShowRenameDialog(false)
+    toast.success('Página renomeada!')
+  }
+
+  const handleDeletePage = async () => {
+    await deletePage.mutateAsync({ id: id! })
+    toast.success('Página excluída')
+    navigate('/pages')
+  }
 
   const selectedDomain = domains.find(d => d.id === selectedDomainId)
 
@@ -287,17 +390,18 @@ export default function PageDetail() {
           className="gap-2 text-sm"
         >
           {page.status === "published"
-            ? <><EyeOff className="w-4 h-4" /> Despublicar</>
-            : <><Globe className="w-4 h-4" /> Publicar</>
+            ? <><EyeOff className="w-4 h-4" /> Despublicar Página</>
+            : <><Globe className="w-4 h-4" /> Publicar Página</>
           }
         </Button>
 
-        {/* Abrir Editor */}
+        {/* Configurações */}
         <button
-          onClick={() => navigate(`/pages/${page.id}/editor`)}
-          className="btn-brand h-9 px-4 text-[13px] rounded-full flex items-center gap-2"
+          onClick={() => { setSettingsSection('info'); setShowSettingsModal(true) }}
+          title="Configurações"
+          className="h-9 w-9 flex items-center justify-center text-(--text-tertiary) hover:text-(--text-primary) hover:bg-(--card-hover) rounded-full border border-(--card-border) transition-colors"
         >
-          <Pencil className="w-3.5 h-3.5 mr-1" /> Abrir Editor
+          <Settings className="w-4 h-4" />
         </button>
 
         {/* Menu */}
@@ -308,6 +412,9 @@ export default function PageDetail() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => navigate(`/pages/${page.id}/editor`)}>
+              <Pencil className="w-4 h-4 mr-2" /> Abrir editor
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={handleCopyLink}>
               <Copy className="w-4 h-4 mr-2" /> Copiar link
             </DropdownMenuItem>
@@ -318,6 +425,19 @@ export default function PageDetail() {
                 </a>
               </DropdownMenuItem>
             )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => { setRenameValue(page.nome); setShowRenameDialog(true) }}>
+              <SquarePen className="w-4 h-4 mr-2" /> Renomear página
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleTogglePublish}>
+              {page.status === "published"
+                ? <><EyeOff className="w-4 h-4 mr-2" /> Despublicar página</>
+                : <><Globe className="w-4 h-4 mr-2" /> Publicar página</>
+              }
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setShowDeletePageDialog(true)} className="text-red-500 focus:text-red-500">
+              <Trash2 className="w-4 h-4 mr-2" /> Excluir página
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -342,56 +462,130 @@ export default function PageDetail() {
       {/* Tab: Resumo */}
       {activeTab === "resumo" && (
         <div className="space-y-4">
-          <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-5 space-y-4">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">URL da página</p>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 text-[13px] bg-(--card-hover) text-(--text-secondary) px-3 py-2 rounded-[10px] truncate">
-                  {PUBLIC_URL}/p/{page.slug}
-                </code>
-                <button onClick={handleCopyLink} className="p-2 hover:bg-(--card-hover) text-(--text-tertiary) hover:text-(--text-primary) rounded-[10px] transition-colors">
-                  <Copy className="w-4 h-4" />
-                </button>
-                {page.status === "published" && (
-                  <a href={`/p/${page.slug}`} target="_blank" rel="noopener noreferrer" className="p-2 hover:bg-(--card-hover) text-(--text-tertiary) hover:text-(--text-primary) rounded-[10px] transition-colors border border-transparent hover:border-(--card-border)">
-                    <ExternalLink className="w-4 h-4 text-muted-foreground" />
-                  </a>
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: "Visitas", icon: <Users className="w-4 h-4" />, value: summaryReport?.visitas, baseline: summaryReport?.visitas3m },
+              { label: "Conversão", icon: <Users className="w-4 h-4" />, value: summaryReport?.conversoes, baseline: summaryReport?.conversoes3m },
+              { label: "Taxa de conversão", icon: <BarChart2 className="w-4 h-4" />, value: summaryReport?.taxaConversao, baseline: summaryReport?.taxaConversao3m, isPct: true },
+            ].map(({ label, icon, value, baseline, isPct }) => (
+              <div key={label} className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-5 space-y-3">
+                <div className="w-8 h-8 rounded-lg bg-(--card-hover) flex items-center justify-center text-(--text-tertiary)">{icon}</div>
+                <p className="text-xs text-muted-foreground">{label}</p>
+                {summaryReport ? (
+                  <div className="flex items-end gap-4">
+                    <div>
+                      <p className="text-xl font-semibold text-foreground">{isPct ? `${value!.toFixed(2)}%` : value!.toLocaleString("pt-BR")}</p>
+                      <p className="text-[11px] text-muted-foreground">Últimos 7 dias</p>
+                    </div>
+                    <div>
+                      <p className="text-xl font-semibold text-foreground">{isPct ? `${baseline!.toFixed(2)}%` : baseline!.toLocaleString("pt-BR")}</p>
+                      <p className="text-[11px] text-muted-foreground">Últimos 3 meses</p>
+                    </div>
+                  </div>
+                ) : (
+                  <Skeleton className="h-10 w-full" />
                 )}
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4 pt-4 mt-4 border-t border-(--card-border)">
-              <div>
-                <p className="text-[12px] font-semibold text-(--text-tertiary) uppercase tracking-wider mb-1">Status</p>
-                <p className="text-[13px] font-medium text-(--text-primary)">
-                  {page.status === "published" ? "Publicada" : "Rascunho"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-0.5">Total de leads</p>
-                <p className="text-sm font-medium text-foreground">{leads.length}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-0.5">Criada em</p>
-                <p className="text-sm font-medium text-foreground">
-                  {format(new Date(page.criado_em || page.atualizado_em), "dd/MM/yyyy", { locale: ptBR })}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-0.5">Última atualização</p>
-                <p className="text-sm font-medium text-foreground">
-                  {format(new Date(page.atualizado_em), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
+
+          <div className="flex items-center gap-2">
+            <span className={cn("w-2 h-2 rounded-full flex-shrink-0", page.status === "published" ? "bg-emerald-500" : "bg-muted-foreground")} />
+            <code className="flex-1 text-[13px] text-(--text-secondary) truncate">
+              {PUBLIC_URL}/p/{page.slug}
+            </code>
+            <button onClick={handleCopyLink} className="p-2 hover:bg-(--card-hover) text-(--text-tertiary) hover:text-(--text-primary) rounded-[10px] transition-colors">
+              <Copy className="w-4 h-4" />
+            </button>
+            {page.status === "published" && (
+              <a href={`/p/${page.slug}`} target="_blank" rel="noopener noreferrer" className="p-2 hover:bg-(--card-hover) text-(--text-tertiary) hover:text-(--text-primary) rounded-[10px] transition-colors">
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            )}
+          </div>
+
+          {page.status === "published" ? (
+            <Safari url={`${PUBLIC_URL.replace(/^https?:\/\//, "")}/p/${page.slug}`}>
+              <iframe
+                src={`${PUBLIC_URL}/p/${page.slug}`}
+                title="Pré-visualização da página"
+                className="w-full h-full bg-white border-0"
+              />
+            </Safari>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2 border border-dashed border-(--card-border) rounded-2xl">
+              <EyeOff className="w-8 h-8 opacity-30" />
+              <p className="text-sm">Publique a página para pré-visualizar</p>
+            </div>
+          )}
         </div>
       )}
 
       {/* Tab: Relatório */}
       {activeTab === "relatorio" && (
-        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
-          <BarChart2 className="w-12 h-12 opacity-20" />
-          <p className="text-sm">Relatório em breve</p>
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <p className="text-base font-semibold text-foreground">Resultados</p>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  {period === "all" ? "Todo período" : period === "7d" ? "7 dias" : period === "30d" ? "30 dias" : "90 dias"}
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setPeriod("all")}>Todo período</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setPeriod("7d")}>Últimos 7 dias</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setPeriod("30d")}>Últimos 30 dias</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setPeriod("90d")}>Últimos 90 dias</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {reportLoading || !report ? (
+            <div className="grid grid-cols-3 gap-4">
+              {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { label: "Visitas", value: report.visitas, baseline: report.visitas3m },
+                  { label: "Conversões", value: report.conversoes, baseline: report.conversoes3m },
+                  { label: "Taxa de conversão", value: report.taxaConversao, baseline: report.taxaConversao3m, isPct: true },
+                ].map(({ label, value, baseline, isPct }) => (
+                  <div key={label} className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-5 space-y-1.5">
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                    <p className="text-2xl font-semibold text-foreground">
+                      {isPct ? `${value.toFixed(1)}%` : value.toLocaleString("pt-BR")}
+                    </p>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span>Últimos 3 meses: {isPct ? `${baseline.toFixed(1)}%` : baseline.toLocaleString("pt-BR")}</span>
+                      <DeltaBadge value={pct(value, baseline)} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-5">
+                <div className="flex items-center gap-4 mb-3">
+                  <p className="text-sm font-medium text-foreground">Visitas e conversões</p>
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="w-2 h-2 rounded-full" style={{ background: "#FBB03B" }} /> Visitas</span>
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Conversões</span>
+                </div>
+                {report.series.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
+                    <BarChart2 className="w-10 h-10 opacity-20" />
+                    <p className="text-sm">Sem dados no período</p>
+                  </div>
+                ) : (
+                  <MiniLineChart series={report.series} keys={["visitas", "conversoes"]} colors={["#FBB03B", "#10b981"]} />
+                )}
+              </div>
+
+              <p className="text-xs text-muted-foreground">Dados de visitas guardados por 3 meses.</p>
+            </>
+          )}
         </div>
       )}
 
@@ -400,9 +594,14 @@ export default function PageDetail() {
         <div className="space-y-4">
           {/* Barra de ações */}
           <div className="flex items-center justify-between">
-            <p className="text-base font-semibold text-foreground">
-              Total de <span style={{ color: "#FBB03B" }}>{leads.length}</span> leads
-            </p>
+            <div>
+              <p className="text-base font-semibold text-foreground">
+                Total de <span style={{ color: "#FBB03B" }}>{leads.length}</span> leads
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Exibido no fuso {Intl.DateTimeFormat().resolvedOptions().timeZone}
+              </p>
+            </div>
             <div className="flex items-center gap-2">
               {/* Filtro de período */}
               <DropdownMenu>
@@ -461,8 +660,11 @@ export default function PageDetail() {
                       {format(new Date(lead.criado_em), "dd/MM HH:mm")}
                     </span>
                     <div>
-                      <p className="text-sm font-medium text-foreground">{lead.nome || "—"}</p>
-                      {lead.email && <p className="text-xs text-muted-foreground">{lead.email}</p>}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">Formulário</span>
+                        <p className="text-sm font-medium text-foreground">{lead.nome || "—"}</p>
+                      </div>
+                      {lead.email && <p className="text-xs text-muted-foreground mt-0.5">{lead.email}</p>}
                     </div>
                     <span className="text-sm text-muted-foreground">
                       {[lead.cidade, lead.estado, lead.pais].filter(Boolean).join(", ") || "—"}
@@ -1183,18 +1385,25 @@ export default function PageDetail() {
       <Sheet open={!!selectedLead} onOpenChange={(o) => !o && setSelectedLead(null)}>
         <SheetContent className="w-[400px] overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>Detalhes do Lead</SheetTitle>
+            <SheetTitle>{selectedLead?.nome || "Detalhes do Lead"}</SheetTitle>
+            {selectedLead && (
+              <div className="text-xs text-muted-foreground space-y-0.5 pt-1">
+                <p>Data da conversão: {format(new Date(selectedLead.criado_em), "dd/MM HH:mm")}</p>
+                <p>Exibido no fuso {Intl.DateTimeFormat().resolvedOptions().timeZone}</p>
+              </div>
+            )}
           </SheetHeader>
           {selectedLead && (
             <div className="mt-6 space-y-6">
               {/* Dados pessoais */}
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Dados pessoais</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Dados do lead</p>
                 <div className="border border-border rounded-lg divide-y divide-border">
                   {[
                     { label: "Nome", value: selectedLead.nome },
                     { label: "Email", value: selectedLead.email },
                     { label: "Telefone", value: selectedLead.telefone },
+                    ...Object.entries(selectedLead.campos_extras || {}).map(([label, value]) => ({ label, value: String(value ?? "") })),
                   ].map(({ label, value }) => value ? (
                     <div key={label} className="flex justify-between px-4 py-2.5">
                       <span className="text-sm text-muted-foreground">{label}</span>
@@ -1292,6 +1501,351 @@ export default function PageDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* AlertDialog excluir página */}
+      <AlertDialog open={showDeletePageDialog} onOpenChange={setShowDeletePageDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir página?</AlertDialogTitle>
+            <AlertDialogDescription>Esta ação não pode ser desfeita. Todos os leads e dados associados a "{page.nome}" serão perdidos.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-500 hover:bg-red-600 text-white"
+              onClick={handleDeletePage}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog renomear página */}
+      <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Renomear página</DialogTitle>
+          </DialogHeader>
+          <Input
+            autoFocus
+            value={renameValue}
+            onChange={e => setRenameValue(e.target.value)}
+            placeholder="Nome da página"
+            onKeyDown={e => e.key === 'Enter' && handleRenamePage()}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRenameDialog(false)}>Cancelar</Button>
+            <Button onClick={handleRenamePage} disabled={savingRename || !renameValue.trim()}>
+              {savingRename ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Configurações */}
+      <Dialog open={showSettingsModal} onOpenChange={setShowSettingsModal}>
+        <DialogContent className="sm:max-w-3xl p-0 gap-0 overflow-hidden">
+          <div className="flex h-[600px] max-h-[80vh]">
+            {/* Sidebar */}
+            <div className="w-56 shrink-0 border-r border-gray-200 bg-gray-50 p-3 space-y-1 overflow-y-auto">
+              {([
+                { key: 'info', label: 'Informações & SEO', icon: <Search className="w-4 h-4" /> },
+                { key: 'social', label: 'Redes sociais', icon: <Share2 className="w-4 h-4" /> },
+                { key: 'integracoes', label: 'Integrações', icon: <Puzzle className="w-4 h-4" /> },
+                { key: 'jscss', label: 'Javascript & CSS', icon: <Code className="w-4 h-4" /> },
+                { key: 'velocidade', label: 'Velocidade', icon: <Zap className="w-4 h-4" /> },
+                { key: 'lgpd', label: 'LGPD & GDPR', icon: <ShieldCheck className="w-4 h-4" /> },
+                { key: 'seguranca', label: 'Segurança', icon: <Lock className="w-4 h-4" /> },
+                { key: 'leads', label: 'Notificações de leads', icon: <Mail className="w-4 h-4" /> },
+              ] as const).map(item => (
+                <button
+                  key={item.key}
+                  onClick={() => setSettingsSection(item.key)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-[13px] font-medium rounded-lg transition-colors text-left ${
+                    settingsSection === item.key ? 'bg-white text-gray-900 shadow-sm border border-gray-200' : 'text-gray-500 hover:bg-white/60 hover:text-gray-700'
+                  }`}
+                >
+                  {item.icon} {item.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Painel de conteúdo */}
+            <div className="flex-1 flex flex-col min-w-0">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+                <h3 className="text-[15px] font-bold text-gray-900">Configurações</h3>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+                {settingsSection === 'info' && (
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between gap-4 p-4 border border-gray-200 rounded-xl bg-white">
+                      <div>
+                        <p className="text-[13px] font-semibold text-gray-900">Habilitar buscadores</p>
+                        <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed">Habilitar que a página apareça nos resultados do Google, Bing, Yahoo! e etc?</p>
+                      </div>
+                      <Switch checked={seo.enable_indexing} onCheckedChange={v => setSeo(p => ({ ...p, enable_indexing: v }))} className="data-[state=checked]:bg-[#FBB03B] shrink-0 mt-0.5" />
+                    </div>
+
+                    <div className="flex items-start justify-between gap-4 p-4 border border-gray-200 rounded-xl bg-white">
+                      <div>
+                        <p className="text-[13px] font-semibold text-gray-900">Habilitar link canônico</p>
+                        <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed">Evita conteúdo duplicado indicando a URL oficial da página para os buscadores.</p>
+                      </div>
+                      <Switch checked={seo.canonical_enabled} onCheckedChange={v => setSeo(p => ({ ...p, canonical_enabled: v }))} className="data-[state=checked]:bg-[#FBB03B] shrink-0 mt-0.5" />
+                    </div>
+
+                    <div>
+                      <label className="text-[12px] font-semibold text-gray-600 block mb-2">Favicon</label>
+                      <div className="flex items-center gap-4 p-4 border border-gray-200 rounded-xl bg-white">
+                        <div className="w-14 h-14 bg-gray-100 border border-gray-200 rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+                          {seo.favicon_url ? <img src={seo.favicon_url} alt="Favicon" className="w-10 h-10 object-contain" /> : <Globe className="w-7 h-7 text-gray-300" />}
+                        </div>
+                        <div>
+                          <p className="text-[12px] text-gray-500 mb-2">Tamanho recomendado: 64×64px — .PNG ou .JPEG</p>
+                          <div className="flex gap-2">
+                            <button onClick={() => { setFaviconUrl(seo.favicon_url || ''); setShowFaviconModal(true) }}
+                              className="flex items-center gap-1.5 text-[12px] font-semibold text-gray-700 border border-gray-200 bg-white px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+                              <Plus className="w-3.5 h-3.5" /> Alterar favicon
+                            </button>
+                            {seo.favicon_url && (
+                              <button onClick={() => setSeo(p => ({ ...p, favicon_url: '' }))}
+                                className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg border border-gray-200 transition-colors">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[12px] font-semibold text-gray-600 block mb-1.5">Título da página <span className="text-red-500">*</span></label>
+                      <Input value={seo.title} onChange={e => setSeo(p => ({ ...p, title: e.target.value }))} placeholder="Ex: Transformamos ideias em soluções digitais" maxLength={60} className="bg-white border-gray-200 focus-visible:ring-[#FBB03B]" />
+                      <p className="text-[11px] text-gray-400 mt-1">{seo.title.length}/60</p>
+                    </div>
+
+                    <div>
+                      <label className="text-[12px] font-semibold text-gray-600 block mb-1.5">Descrição da página</label>
+                      <Textarea value={seo.description} onChange={e => setSeo(p => ({ ...p, description: e.target.value }))} placeholder="Descreva brevemente o conteúdo da página..." maxLength={320} rows={3} className="bg-white border-gray-200 focus-visible:ring-[#FBB03B] resize-none" />
+                      <p className="text-[11px] text-gray-400 mt-1">{seo.description.length}/320</p>
+                    </div>
+
+                    <div>
+                      <label className="text-[12px] font-semibold text-gray-600 block mb-1.5">Palavras-chave</label>
+                      <Input value={seo.keywords} onChange={e => setSeo(p => ({ ...p, keywords: e.target.value }))} placeholder="Ex: marketing digital, tráfego pago, resultados" className="bg-white border-gray-200 focus-visible:ring-[#FBB03B]" />
+                      <p className="text-[11px] text-gray-400 mt-1">Separe as palavras por vírgula</p>
+                    </div>
+
+                    {(seo.title || seo.description) && (
+                      <div>
+                        <label className="text-[12px] font-semibold text-gray-600 block mb-2">Pré-visualização do Google</label>
+                        <div className="p-4 border border-gray-200 rounded-xl bg-white">
+                          <p className="text-[12px] text-gray-400 mb-1">{selectedDomain?.domain || 'seudominio.com.br'}</p>
+                          <p className="text-[15px] text-blue-600 font-medium mb-1 truncate">{seo.title || 'Título da página'}</p>
+                          <p className="text-[13px] text-gray-600 leading-relaxed line-clamp-2">{seo.description || ''}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {settingsSection === 'social' && (
+                  <div className="space-y-4">
+                    <p className="text-sm text-gray-500">Como sua página aparece ao ser compartilhada no WhatsApp, Facebook e outras redes.</p>
+                    <div>
+                      <label className="text-[12px] font-semibold text-gray-600 block mb-1.5">Nome da empresa</label>
+                      <Input value={seo.social_company_name} onChange={e => setSeo(p => ({ ...p, social_company_name: e.target.value }))} placeholder="Ex: KV Group" className="bg-white border-gray-200 focus-visible:ring-[#FBB03B]" />
+                    </div>
+                    <div>
+                      <label className="text-[12px] font-semibold text-gray-600 block mb-1.5">Título do compartilhamento</label>
+                      <Input value={seo.social_title} onChange={e => setSeo(p => ({ ...p, social_title: e.target.value }))} placeholder="Título exibido ao compartilhar o link" className="bg-white border-gray-200 focus-visible:ring-[#FBB03B]" />
+                    </div>
+                    <div>
+                      <label className="text-[12px] font-semibold text-gray-600 block mb-1.5">Descrição do compartilhamento</label>
+                      <Textarea value={seo.social_description} onChange={e => setSeo(p => ({ ...p, social_description: e.target.value }))} placeholder="Descrição exibida ao compartilhar o link" rows={3} className="bg-white border-gray-200 focus-visible:ring-[#FBB03B] resize-none" />
+                    </div>
+                    <div>
+                      <label className="text-[12px] font-semibold text-gray-600 block mb-1.5">Imagem de compartilhamento</label>
+                      <Input value={seo.social_image_url} onChange={e => setSeo(p => ({ ...p, social_image_url: e.target.value }))} placeholder="https://..." className="bg-white border-gray-200 focus-visible:ring-[#FBB03B]" />
+                      {seo.social_image_url && <img src={seo.social_image_url} alt="Prévia" className="mt-2 max-h-32 rounded-lg border border-gray-200" />}
+                    </div>
+                  </div>
+                )}
+
+                {(settingsSection === 'integracoes' || settingsSection === 'jscss') && (
+                  <div className="flex flex-col items-center justify-center text-center py-16 gap-3">
+                    <Puzzle className="w-8 h-8 text-gray-300" />
+                    <p className="text-sm text-gray-500 max-w-xs">
+                      {settingsSection === 'integracoes'
+                        ? 'Facebook API, Google Analytics, Google Tag Manager e Microsoft Clarity ficam na aba Integrações.'
+                        : 'Scripts e estilos personalizados ficam na aba Integrações, junto com as demais integrações.'}
+                    </p>
+                    <Button variant="outline" onClick={() => { setShowSettingsModal(false); setActiveTab('integracoes') }}>
+                      Ir para Integrações
+                    </Button>
+                  </div>
+                )}
+
+                {settingsSection === 'velocidade' && (
+                  <div className="space-y-3">
+                    {[
+                      { key: 'zoom', label: 'Habilitar zoom', desc: 'Permite que o visitante dê zoom na página em dispositivos móveis.' },
+                      { key: 'minifyImages', label: 'Otimizar imagens', desc: 'Comprime imagens para carregar mais rápido.' },
+                      { key: 'minifyJs', label: 'Otimizar JS', desc: 'Minifica arquivos Javascript.' },
+                      { key: 'minifyCss', label: 'Otimizar CSS', desc: 'Minifica arquivos CSS.' },
+                      { key: 'minifyHtml', label: 'Otimizar HTML', desc: 'Minifica o HTML gerado.' },
+                      { key: 'shimmerEffect', label: 'Shimmer effect', desc: 'Exibe um efeito de carregamento enquanto a página carrega.' },
+                      { key: 'lazyLoading', label: 'Lazy loading', desc: 'Carrega imagens apenas quando aparecem na tela.' },
+                    ].map(item => (
+                      <div key={item.key} className="flex items-start justify-between gap-4 p-4 border border-gray-200 rounded-xl bg-white">
+                        <div>
+                          <p className="text-[13px] font-semibold text-gray-900">{item.label}</p>
+                          <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed">{item.desc}</p>
+                        </div>
+                        <Switch
+                          checked={!!(settings.velocidade as any)?.[item.key]}
+                          onCheckedChange={v => updateSettings('velocidade', item.key, v)}
+                          className="data-[state=checked]:bg-[#FBB03B] shrink-0 mt-0.5"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {settingsSection === 'lgpd' && (
+                  <div className="flex items-start justify-between gap-4 p-4 border border-gray-200 rounded-xl bg-white">
+                    <div>
+                      <p className="text-[13px] font-semibold text-gray-900">Notificações sobre cookies</p>
+                      <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed">Exibe um aviso de cookies em conformidade com a LGPD/GDPR.</p>
+                    </div>
+                    <Switch
+                      checked={!!settings.lgpd?.cookieNotice}
+                      onCheckedChange={v => updateSettings('lgpd', 'cookieNotice', v)}
+                      className="data-[state=checked]:bg-[#FBB03B] shrink-0 mt-0.5"
+                    />
+                  </div>
+                )}
+
+                {settingsSection === 'seguranca' && (
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-4 p-4 border border-gray-200 rounded-xl bg-white">
+                      <div>
+                        <p className="text-[13px] font-semibold text-gray-900">Criptografia de dados em formulários</p>
+                        <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed">Criptografa os dados enviados pelos formulários da página.</p>
+                      </div>
+                      <Switch
+                        checked={!!settings.seguranca?.encryptFormData}
+                        onCheckedChange={v => updateSettings('seguranca', 'encryptFormData', v)}
+                        className="data-[state=checked]:bg-[#FBB03B] shrink-0 mt-0.5"
+                      />
+                    </div>
+                    <div className="flex items-start justify-between gap-4 p-4 border border-gray-200 rounded-xl bg-white">
+                      <div>
+                        <p className="text-[13px] font-semibold text-gray-900">SSL</p>
+                        <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed">Exige conexão segura (HTTPS) para acessar a página.</p>
+                      </div>
+                      <Switch
+                        checked={!!settings.seguranca?.ssl}
+                        onCheckedChange={v => updateSettings('seguranca', 'ssl', v)}
+                        className="data-[state=checked]:bg-[#FBB03B] shrink-0 mt-0.5"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {settingsSection === 'leads' && (
+                  <div className="space-y-4">
+                    <p className="text-sm text-gray-500">Configure quem recebe um e-mail quando um novo lead for capturado nesta página.</p>
+                    <div>
+                      <label className="text-[12px] font-semibold text-gray-600 block mb-1.5">Título da notificação</label>
+                      <Input
+                        value={settings.notificacoesLeads?.title || ''}
+                        onChange={e => updateSettings('notificacoesLeads', 'title', e.target.value)}
+                        placeholder="Ex: Novo lead recebido"
+                        className="bg-white border-gray-200 focus-visible:ring-[#FBB03B]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[12px] font-semibold text-gray-600 block mb-1.5">E-mail para notificação</label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={newLeadEmail}
+                          onChange={e => setNewLeadEmail(e.target.value)}
+                          placeholder="email@exemplo.com"
+                          className="bg-white border-gray-200 focus-visible:ring-[#FBB03B]"
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && newLeadEmail.trim()) {
+                              updateSettings('notificacoesLeads', 'emails', [...(settings.notificacoesLeads?.emails || []), newLeadEmail.trim()])
+                              setNewLeadEmail('')
+                            }
+                          }}
+                        />
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            if (!newLeadEmail.trim()) return
+                            updateSettings('notificacoesLeads', 'emails', [...(settings.notificacoesLeads?.emails || []), newLeadEmail.trim()])
+                            setNewLeadEmail('')
+                          }}
+                        >
+                          Adicionar
+                        </Button>
+                      </div>
+                      {(settings.notificacoesLeads?.emails || []).length > 0 && (
+                        <div className="mt-2 space-y-1.5">
+                          {(settings.notificacoesLeads?.emails || []).map((email, i) => (
+                            <div key={i} className="flex items-center justify-between px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[13px]">
+                              <span className="text-gray-700">{email}</span>
+                              <button
+                                onClick={() => updateSettings('notificacoesLeads', 'emails', (settings.notificacoesLeads?.emails || []).filter((_, idx) => idx !== i))}
+                                className="text-gray-400 hover:text-red-500"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-[12px] font-semibold text-gray-600 block mb-1.5">Nome do remetente</label>
+                      <Input
+                        value={settings.notificacoesLeads?.senderName || ''}
+                        onChange={e => updateSettings('notificacoesLeads', 'senderName', e.target.value)}
+                        placeholder="Ex: KV Group"
+                        className="bg-white border-gray-200 focus-visible:ring-[#FBB03B]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[12px] font-semibold text-gray-600 block mb-1.5">E-mail de resposta</label>
+                      <Input
+                        value={settings.notificacoesLeads?.replyEmail || ''}
+                        onChange={e => updateSettings('notificacoesLeads', 'replyEmail', e.target.value)}
+                        placeholder="contato@exemplo.com"
+                        className="bg-white border-gray-200 focus-visible:ring-[#FBB03B]"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100 shrink-0">
+                <Button variant="outline" onClick={() => setShowSettingsModal(false)}>Cancelar</Button>
+                <Button
+                  onClick={handleSaveSettings}
+                  disabled={savingSettings}
+                  className="bg-[#FBB03B] hover:bg-[#f0a824] text-[#1A1A1A] font-semibold"
+                >
+                  {savingSettings ? 'Salvando...' : 'Salvar'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Favicon Modal */}
       {showFaviconModal && (

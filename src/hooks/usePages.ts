@@ -32,6 +32,31 @@ export interface PageIntegrations {
   }
 }
 
+export interface PageSettings {
+  velocidade?: {
+    zoom?: boolean
+    minifyImages?: boolean
+    minifyJs?: boolean
+    minifyCss?: boolean
+    minifyHtml?: boolean
+    shimmerEffect?: boolean
+    lazyLoading?: boolean
+  }
+  lgpd?: {
+    cookieNotice?: boolean
+  }
+  seguranca?: {
+    encryptFormData?: boolean
+    ssl?: boolean
+  }
+  notificacoesLeads?: {
+    title?: string
+    emails?: string[]
+    senderName?: string
+    replyEmail?: string
+  }
+}
+
 export interface Page {
   id: string
   nome: string
@@ -45,12 +70,18 @@ export interface Page {
   integrations?: PageIntegrations
   domain_id?: string | null
   page_slug?: string | null
+  settings?: PageSettings
   seo?: {
     enable_indexing?: boolean
+    canonical_enabled?: boolean
     title?: string
     description?: string
     keywords?: string
     favicon_url?: string
+    social_company_name?: string
+    social_title?: string
+    social_description?: string
+    social_image_url?: string
   }
 }
 

@@ -67,3 +67,15 @@ create table if not exists leads (
 
 create index if not exists idx_leads_page_id on leads(page_id);
 create index if not exists idx_pages_status on pages(status);
+
+alter table pages add column if not exists settings jsonb not null default '{}'::jsonb;
+
+create table if not exists page_views (
+  id uuid primary key default gen_random_uuid(),
+  page_id uuid not null references pages(id) on delete cascade,
+  ip text,
+  criado_em timestamptz not null default now()
+);
+
+create index if not exists idx_page_views_page_id on page_views(page_id);
+create index if not exists idx_page_views_criado_em on page_views(criado_em);

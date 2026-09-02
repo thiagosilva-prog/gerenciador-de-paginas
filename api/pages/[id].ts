@@ -12,6 +12,7 @@ const ALLOWED_FIELDS = [
   'domain_id',
   'page_slug',
   'seo',
+  'settings',
   'publicado_em',
 ] as const
 
@@ -39,12 +40,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const setClauses = entries.map(([key], i) => {
-        const jsonbCols = ['page_data', 'integrations', 'seo']
+        const jsonbCols = ['page_data', 'integrations', 'seo', 'settings']
         const cast = jsonbCols.includes(key) ? '::jsonb' : ''
         return `"${key}" = $${i + 1}${cast}`
       })
       const values = entries.map(([key, value]) => {
-        const jsonbCols = ['page_data', 'integrations', 'seo']
+        const jsonbCols = ['page_data', 'integrations', 'seo', 'settings']
         return jsonbCols.includes(key) ? JSON.stringify(value) : value
       })
 
