@@ -71,6 +71,7 @@ export interface Page {
   domain_id?: string | null
   page_slug?: string | null
   settings?: PageSettings
+  folder_id?: string | null
   seo?: {
     enable_indexing?: boolean
     canonical_enabled?: boolean
@@ -141,6 +142,49 @@ export function useDeletePage() {
   return useMutation({
     mutationFn: ({ id }: { id: string }) => apiFetch<void>(`/api/pages/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['pages'] })
+    },
+  })
+}
+
+export interface PageFolder {
+  id: string
+  nome: string
+  criado_em: string
+  atualizado_em: string
+}
+
+export function useFolders() {
+  return useQuery({
+    queryKey: ['folders'],
+    queryFn: () => apiFetch<PageFolder[]>('/api/folders'),
+  })
+}
+
+export function useCreateFolder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: { nome: string }) =>
+      apiFetch<PageFolder>('/api/folders', { method: 'POST', body: JSON.stringify(payload) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['folders'] }),
+  })
+}
+
+export function useRenameFolder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: { id: string; nome: string }) =>
+      apiFetch<PageFolder>('/api/folders', { method: 'PATCH', body: JSON.stringify(payload) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['folders'] }),
+  })
+}
+
+export function useDeleteFolder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) => apiFetch<void>(`/api/folders?id=${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['folders'] })
       qc.invalidateQueries({ queryKey: ['pages'] })
     },
   })

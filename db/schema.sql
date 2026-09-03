@@ -79,3 +79,13 @@ create table if not exists page_views (
 
 create index if not exists idx_page_views_page_id on page_views(page_id);
 create index if not exists idx_page_views_criado_em on page_views(criado_em);
+
+create table if not exists page_folders (
+  id uuid primary key default gen_random_uuid(),
+  nome text not null,
+  criado_em timestamptz not null default now(),
+  atualizado_em timestamptz not null default now()
+);
+
+alter table pages add column if not exists folder_id uuid references page_folders(id) on delete set null;
+create index if not exists idx_pages_folder_id on pages(folder_id);

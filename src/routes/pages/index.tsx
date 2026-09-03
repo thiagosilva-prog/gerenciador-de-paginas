@@ -1,13 +1,20 @@
 import * as React from "react";
 import { useNavigate } from "react-router";
-import { Plus, FileText, Globe, Trash2, Pencil, ExternalLink, LogOut } from "lucide-react";
+import { Plus, FileText, Folder, FolderOpen, Globe, Trash2, Pencil, ExternalLink, LogOut, MoreVertical, ArrowLeft, FolderInput } from "lucide-react";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "../../components/ui/dropdown-menu";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { toast } from "sonner";
-import { usePages, useCreatePage, useDeletePage, generateSlug, type Page } from "../../hooks/usePages";
+import {
+  usePages, useCreatePage, useDeletePage, useUpdatePage, generateSlug, type Page,
+  useFolders, useCreateFolder, useRenameFolder, useDeleteFolder, type PageFolder,
+} from "../../hooks/usePages";
 import { useAuth } from "../../hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -20,10 +27,22 @@ export default function PagesIndex() {
   const [newPageSlug, setNewPageSlug] = React.useState("");
   const [slugManual, setSlugManual] = React.useState(false);
 
+  const [currentFolderId, setCurrentFolderId] = React.useState<string | null>(null);
+  const [folderDialog, setFolderDialog] = React.useState<{ mode: "create" | "rename"; folder?: PageFolder } | null>(null);
+  const [folderNome, setFolderNome] = React.useState("");
+
   const { data: paginas = [], isLoading } = usePages();
+  const { data: folders = [], isLoading: isLoadingFolders } = useFolders();
 
   const createPage = useCreatePage();
   const deletePage = useDeletePage();
+  const updatePage = useUpdatePage();
+  const createFolder = useCreateFolder();
+  const renameFolder = useRenameFolder();
+  const deleteFolder = useDeleteFolder();
+
+  const currentFolder = currentFolderId ? folders.find(f => f.id === currentFolderId) : undefined;
+  const visiblePages = paginas.filter(p => (p.folder_id ?? null) === currentFolderId);
 
   const handleNomeChange = (v: string) => {
     setNewPageNome(v);
@@ -37,6 +56,9 @@ export default function PagesIndex() {
         nome: newPageNome.trim(),
         slug: newPageSlug || generateSlug(newPageNome),
       });
+      if (currentFolderId) {
+        await updatePage.mutateAsync({ id: page.id, folder_id: currentFolderId });
+      }
       toast.success("Página criada!");
       setShowCreateModal(false);
       setNewPageNome("");
@@ -58,20 +80,77 @@ export default function PagesIndex() {
     }
   };
 
+  const handleMovePage = async (page: Page, folderId: string | null) => {
+    try {
+      await updatePage.mutateAsync({ id: page.id, folder_id: folderId });
+      toast.success(folderId ? "Página movida para a pasta" : "Página removida da pasta");
+    } catch {
+      toast.error("Erro ao mover página");
+    }
+  };
+
+  const handleSaveFolder = async () => {
+    if (!folderNome.trim() || !folderDialog) return;
+    try {
+      if (folderDialog.mode === "create") {
+        await createFolder.mutateAsync({ nome: folderNome.trim() });
+        toast.success("Pasta criada!");
+      } else if (folderDialog.folder) {
+        await renameFolder.mutateAsync({ id: folderDialog.folder.id, nome: folderNome.trim() });
+        toast.success("Pasta renomeada!");
+      }
+      setFolderDialog(null);
+      setFolderNome("");
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao salvar pasta");
+    }
+  };
+
+  const handleDeleteFolder = async (folder: PageFolder) => {
+    if (!window.confirm(`Excluir a pasta "${folder.nome}"? As páginas dentro dela voltam para a raiz.`)) return;
+    try {
+      await deleteFolder.mutateAsync({ id: folder.id });
+      toast.success("Pasta excluída");
+      if (currentFolderId === folder.id) setCurrentFolderId(null);
+    } catch {
+      toast.error("Erro ao excluir pasta");
+    }
+  };
+
+  const loading = isLoading || isLoadingFolders;
+
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-(--text-tertiary)" />
-            <h2 className="text-[22px] font-semibold text-(--text-primary)" style={{ letterSpacing: '-0.374px' }}>Páginas</h2>
+            {currentFolderId ? (
+              <button onClick={() => setCurrentFolderId(null)} className="text-(--text-tertiary) hover:text-(--text-primary)">
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            ) : (
+              <FileText className="w-5 h-5 text-(--text-tertiary)" />
+            )}
+            <h2 className="text-[22px] font-semibold text-(--text-primary)" style={{ letterSpacing: '-0.374px' }}>
+              {currentFolder ? currentFolder.nome : "Páginas"}
+            </h2>
           </div>
           <p className="text-[13px] text-(--text-secondary) mt-1">
-            Gerencie suas landing pages
+            {currentFolder ? "Páginas / " + currentFolder.nome : "Gerencie suas landing pages"}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {!currentFolderId && (
+            <Button
+              variant="outline"
+              onClick={() => { setFolderDialog({ mode: "create" }); setFolderNome(""); }}
+              className="h-9 px-4 text-[13px] rounded-full"
+            >
+              <Folder className="h-3.5 w-3.5 mr-1.5" />
+              Nova pasta
+            </Button>
+          )}
           <Button
             onClick={() => setShowCreateModal(true)}
             className="btn-brand h-9 px-4 text-[13px] rounded-full"
@@ -90,16 +169,18 @@ export default function PagesIndex() {
       </div>
 
       {/* Conteúdo */}
-      {isLoading ? (
+      {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(3)].map((_, j) => <Skeleton key={j} className="h-36 rounded-xl" />)}
         </div>
-      ) : paginas.length === 0 ? (
+      ) : visiblePages.length === 0 && (currentFolderId || folders.length === 0) ? (
         <div className="flex flex-col items-center justify-center py-24 text-center border-dashed bg-(--card-bg) border border-(--card-border) rounded-[14px]">
           <div className="h-14 w-14 rounded-full bg-(--card-hover) border border-(--card-border) flex items-center justify-center mb-4">
             <Globe className="h-6 w-6 text-(--text-tertiary)" />
           </div>
-          <h3 className="text-[15px] font-semibold text-(--text-primary) mb-1">Nenhuma página criada ainda</h3>
+          <h3 className="text-[15px] font-semibold text-(--text-primary) mb-1">
+            {currentFolderId ? "Nenhuma página nesta pasta" : "Nenhuma página criada ainda"}
+          </h3>
           <p className="text-[13px] text-(--text-tertiary) mb-6 max-w-sm">Crie sua primeira landing page.</p>
           <Button
             onClick={() => setShowCreateModal(true)}
@@ -110,7 +191,44 @@ export default function PagesIndex() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {paginas.map(page => (
+          {!currentFolderId && folders.map(folder => {
+            const count = paginas.filter(p => p.folder_id === folder.id).length;
+            return (
+              <div
+                key={folder.id}
+                className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-5 hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors flex items-start gap-3 cursor-pointer group"
+                onClick={() => setCurrentFolderId(folder.id)}
+              >
+                <div className="h-10 w-10 rounded-[10px] bg-(--card-hover) flex items-center justify-center shrink-0">
+                  <FolderOpen className="h-5 w-5 text-[#FBB03B]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-[15px] text-(--text-primary) mb-0.5 truncate" style={{ letterSpacing: '-0.2px' }}>{folder.nome}</h3>
+                  <p className="text-[12px] text-(--text-tertiary)">{count} página{count === 1 ? "" : "s"}</p>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="h-7 w-7 flex items-center justify-center text-(--text-tertiary) hover:text-(--text-primary) hover:bg-(--card-hover) rounded-full transition-colors shrink-0"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                    <DropdownMenuItem onClick={() => { setFolderDialog({ mode: "rename", folder }); setFolderNome(folder.nome); }}>
+                      <Pencil className="w-3.5 h-3.5 mr-2" /> Renomear pasta
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleDeleteFolder(folder)} className="text-red-500 focus:text-red-500">
+                      <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir pasta
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            );
+          })}
+
+          {visiblePages.map(page => (
             <div
               key={page.id}
               className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-5 hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors flex flex-col gap-3 cursor-pointer group"
@@ -153,6 +271,36 @@ export default function PagesIndex() {
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center justify-center px-2.5 rounded-[10px] border border-(--card-border) text-(--text-secondary) hover:bg-(--card-hover) hover:text-(--text-primary) transition-colors cursor-pointer">
+                      <FolderInput className="w-3.5 h-3.5" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {folders.length === 0 ? (
+                      <DropdownMenuItem disabled>Nenhuma pasta criada</DropdownMenuItem>
+                    ) : (
+                      folders.map(folder => (
+                        <DropdownMenuItem
+                          key={folder.id}
+                          disabled={page.folder_id === folder.id}
+                          onClick={() => handleMovePage(page, folder.id)}
+                        >
+                          <Folder className="w-3.5 h-3.5 mr-2" /> {folder.nome}
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                    {page.folder_id && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleMovePage(page, null)}>
+                          Remover da pasta
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <button
                   className="flex items-center justify-center px-2.5 rounded-[10px] text-(--text-tertiary) hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                   onClick={() => handleDelete(page)}
@@ -211,6 +359,38 @@ export default function PagesIndex() {
               className="font-semibold hover:opacity-90"
             >
               {createPage.isPending ? "Criando..." : "Criar e abrir"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal criar/renomear pasta */}
+      <Dialog open={!!folderDialog} onOpenChange={(open) => !open && setFolderDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{folderDialog?.mode === "rename" ? "Renomear pasta" : "Nova pasta"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Nome da pasta</Label>
+              <Input
+                autoFocus
+                placeholder="Ex: Campanhas 2026"
+                value={folderNome}
+                onChange={(e) => setFolderNome(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSaveFolder()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFolderDialog(null)}>Cancelar</Button>
+            <Button
+              onClick={handleSaveFolder}
+              disabled={!folderNome.trim() || createFolder.isPending || renameFolder.isPending}
+              style={{ backgroundColor: '#FBB03B', color: '#1A1A1A' }}
+              className="font-semibold hover:opacity-90"
+            >
+              Salvar
             </Button>
           </DialogFooter>
         </DialogContent>

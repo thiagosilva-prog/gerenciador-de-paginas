@@ -14,6 +14,7 @@ const ALLOWED_FIELDS = [
   'seo',
   'settings',
   'publicado_em',
+  'folder_id',
 ] as const
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
