@@ -43,6 +43,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const finalHtml = page.html || renderFromBlocks(page.id, page.nome, page.page_data?.blocks || [])
 
+    const forwardedFor = req.headers['x-forwarded-for']
+    const ip = typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : req.socket.remoteAddress
+    await sql`INSERT INTO page_views (page_id, ip) VALUES (${page.id}, ${ip})`
+
     res.setHeader('Content-Type', 'text/html; charset=utf-8')
     res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
     return res.status(200).send(finalHtml)
