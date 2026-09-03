@@ -65,7 +65,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const skipped: { path: string; reason: string }[] = []
 
   for (const path of paths) {
-    const slug = path.split('/').pop()!.replace(/\.html$/, '')
+    const segments = path.split('/')
+    const filename = segments.pop()!
+    // paginas/<slug>/index.html -> slug é a pasta; qualquer outro <slug>.html -> slug é o nome do arquivo
+    const slug = filename === 'index.html' ? segments.pop()! : filename.replace(/\.html$/, '')
     const { rows } = await sql`SELECT id, page_data FROM pages WHERE slug = ${slug}`
     const page = rows[0]
     if (!page) {
