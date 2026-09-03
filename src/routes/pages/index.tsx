@@ -2,7 +2,7 @@ import * as React from "react";
 import { useNavigate } from "react-router";
 import { Plus, FileText, Folder, FolderOpen, Globe, Trash2, Pencil, ExternalLink, LogOut, MoreVertical, ArrowLeft, FolderInput } from "lucide-react";
 import { Skeleton } from "../../components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../components/ui/dialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuSeparator,
@@ -30,6 +30,11 @@ export default function PagesIndex() {
   const [currentFolderId, setCurrentFolderId] = React.useState<string | null>(null);
   const [folderDialog, setFolderDialog] = React.useState<{ mode: "create" | "rename"; folder?: PageFolder } | null>(null);
   const [folderNome, setFolderNome] = React.useState("");
+  const [confirmDialog, setConfirmDialog] = React.useState<
+    | { type: "page"; page: Page }
+    | { type: "folder"; folder: PageFolder }
+    | null
+  >(null);
 
   const { data: paginas = [], isLoading } = usePages();
   const { data: folders = [], isLoading: isLoadingFolders } = useFolders();
@@ -70,14 +75,8 @@ export default function PagesIndex() {
     }
   };
 
-  const handleDelete = async (page: Page) => {
-    if (!window.confirm(`Excluir "${page.nome}"?`)) return;
-    try {
-      await deletePage.mutateAsync({ id: page.id });
-      toast.success("Página excluída");
-    } catch (e: any) {
-      toast.error("Erro ao excluir");
-    }
+  const handleDelete = (page: Page) => {
+    setConfirmDialog({ type: "page", page });
   };
 
   const handleMovePage = async (page: Page, folderId: string | null) => {
@@ -106,14 +105,25 @@ export default function PagesIndex() {
     }
   };
 
-  const handleDeleteFolder = async (folder: PageFolder) => {
-    if (!window.confirm(`Excluir a pasta "${folder.nome}"? As páginas dentro dela voltam para a raiz.`)) return;
+  const handleDeleteFolder = (folder: PageFolder) => {
+    setConfirmDialog({ type: "folder", folder });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDialog) return;
     try {
-      await deleteFolder.mutateAsync({ id: folder.id });
-      toast.success("Pasta excluída");
-      if (currentFolderId === folder.id) setCurrentFolderId(null);
+      if (confirmDialog.type === "page") {
+        await deletePage.mutateAsync({ id: confirmDialog.page.id });
+        toast.success("Página excluída");
+      } else {
+        await deleteFolder.mutateAsync({ id: confirmDialog.folder.id });
+        toast.success("Pasta excluída");
+        if (currentFolderId === confirmDialog.folder.id) setCurrentFolderId(null);
+      }
     } catch {
-      toast.error("Erro ao excluir pasta");
+      toast.error(confirmDialog.type === "page" ? "Erro ao excluir" : "Erro ao excluir pasta");
+    } finally {
+      setConfirmDialog(null);
     }
   };
 
@@ -391,6 +401,34 @@ export default function PagesIndex() {
               className="font-semibold hover:opacity-90"
             >
               Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal confirmar exclusão */}
+      <Dialog open={!!confirmDialog} onOpenChange={(open) => !open && setConfirmDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirmDialog?.type === "folder" ? "Excluir pasta" : "Excluir página"}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmDialog?.type === "folder"
+                ? `Excluir a pasta "${confirmDialog.folder.nome}"? As páginas dentro dela voltam para a raiz.`
+                : confirmDialog?.type === "page"
+                ? `Excluir "${confirmDialog.page.nome}"? Essa ação não pode ser desfeita.`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDialog(null)}>Cancelar</Button>
+            <Button
+              onClick={handleConfirmDelete}
+              disabled={deletePage.isPending || deleteFolder.isPending}
+              className="bg-red-500 text-white hover:bg-red-600 font-semibold"
+            >
+              Excluir
             </Button>
           </DialogFooter>
         </DialogContent>
