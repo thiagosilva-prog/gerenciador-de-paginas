@@ -1924,7 +1924,7 @@ export default function PageDetail() {
                       setUploadingFavicon(true)
                       try {
                         // Upload para o Vercel Blob
-                        const res = await fetch(`/api/upload-favicon?filename=${encodeURIComponent(file.name)}`, {
+                        const res = await fetch(`/api/upload/favicon?filename=${encodeURIComponent(file.name)}`, {
                           method: 'POST',
                           body: file,
                         })

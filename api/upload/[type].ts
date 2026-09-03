@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { put } from '@vercel/blob'
-import { requireAuth } from './_lib/session.js'
+import { requireAuth } from '../_lib/session.js'
+
+const FOLDERS: Record<string, string> = { image: 'pages', favicon: 'favicons' }
 
 async function bufferStream(req: VercelRequest): Promise<Buffer> {
   const chunks: Buffer[] = []
@@ -18,14 +20,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
+  const type = typeof req.query.type === 'string' ? req.query.type : ''
+  const folder = FOLDERS[type]
+  if (!folder) return res.status(404).json({ error: 'Não encontrado' })
+
   const filename = typeof req.query.filename === 'string' ? req.query.filename : `upload-${Date.now()}`
 
   try {
     const body: Buffer = Buffer.isBuffer(req.body) ? req.body : await bufferStream(req)
-    const blob = await put(`favicons/${Date.now()}-${filename}`, body, { access: 'public' })
+    const blob = await put(`${folder}/${Date.now()}-${filename}`, body, { access: 'public' })
     return res.status(200).json({ url: blob.url })
   } catch (error) {
-    console.error('api/upload-favicon error:', error)
+    console.error(`api/upload/${type} error:`, error)
     return res.status(500).json({ error: 'Erro ao enviar arquivo' })
   }
 }

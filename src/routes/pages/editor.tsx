@@ -59,7 +59,7 @@ export default function PagesEditor() {
     if (!pending) return
     setUploadingImageKey(pending.key)
     try {
-      const res = await fetch(`/api/upload-image?filename=${encodeURIComponent(file.name)}`, {
+      const res = await fetch(`/api/upload/image?filename=${encodeURIComponent(file.name)}`, {
         method: 'POST',
         body: file,
       })
@@ -98,7 +98,7 @@ export default function PagesEditor() {
     try {
       let html = await htmlFile.text()
       for (const img of imageFiles) {
-        const res = await fetch(`/api/upload-image?filename=${encodeURIComponent(img.name)}`, {
+        const res = await fetch(`/api/upload/image?filename=${encodeURIComponent(img.name)}`, {
           method: 'POST',
           body: img,
         })
