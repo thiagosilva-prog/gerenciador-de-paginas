@@ -137,8 +137,12 @@ export default function PagesIndex() {
         <div>
           <div className="flex items-center gap-2">
             {currentFolderId ? (
-              <button onClick={() => setCurrentFolderId(null)} className="text-(--text-tertiary) hover:text-(--text-primary)">
-                <ArrowLeft className="w-5 h-5" />
+              <button
+                onClick={() => setCurrentFolderId(null)}
+                title="Voltar para Páginas"
+                className="h-8 w-8 flex items-center justify-center text-(--text-tertiary) hover:text-(--text-primary) hover:bg-(--card-hover) rounded-2xl border border-(--card-border) transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
               </button>
             ) : (
               <FileText className="w-5 h-5 text-(--text-tertiary)" />
@@ -156,7 +160,7 @@ export default function PagesIndex() {
             <Button
               variant="outline"
               onClick={() => { setFolderDialog({ mode: "create" }); setFolderNome(""); }}
-              className="h-9 px-4 text-[13px] rounded-full"
+              className="h-10 px-4 text-[13px] rounded-2xl"
             >
               <Folder className="h-3.5 w-3.5 mr-1.5" />
               Nova pasta
@@ -164,7 +168,7 @@ export default function PagesIndex() {
           )}
           <Button
             onClick={() => setShowCreateModal(true)}
-            className="btn-brand h-9 px-4 text-[13px] rounded-full"
+            className="btn-brand h-10 px-4 text-[13px] rounded-2xl"
           >
             <Plus className="h-3.5 w-3.5 mr-1.5" />
             Nova página
@@ -172,7 +176,7 @@ export default function PagesIndex() {
           <button
             title="Sair"
             onClick={async () => { await logout(); navigate("/login", { replace: true }); }}
-            className="h-9 w-9 flex items-center justify-center text-(--text-tertiary) hover:text-(--text-primary) hover:bg-(--card-hover) rounded-full transition-colors"
+            className="h-10 w-10 flex items-center justify-center text-(--text-tertiary) hover:text-(--text-primary) hover:bg-(--card-hover) rounded-2xl border border-(--card-border) transition-colors"
           >
             <LogOut className="h-4 w-4" />
           </button>
@@ -219,7 +223,7 @@ export default function PagesIndex() {
           <p className="text-[13px] text-(--text-tertiary) mb-6 max-w-sm">Crie sua primeira landing page.</p>
           <Button
             onClick={() => setShowCreateModal(true)}
-            className="btn-brand h-9 px-4 text-[13px] rounded-full"
+            className="btn-brand h-10 px-4 text-[13px] rounded-2xl"
           >
             Criar primeira página
           </Button>
@@ -244,7 +248,7 @@ export default function PagesIndex() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="h-7 w-7 flex items-center justify-center text-(--text-tertiary) hover:text-(--text-primary) hover:bg-(--card-hover) rounded-full transition-colors shrink-0"
+                    className="h-8 w-8 flex items-center justify-center text-(--text-tertiary) hover:text-(--text-primary) hover:bg-(--card-hover) rounded-2xl transition-colors shrink-0"
                     onClick={e => e.stopPropagation()}
                   >
                     <MoreVertical className="w-4 h-4" />
@@ -295,7 +299,7 @@ export default function PagesIndex() {
                 onClick={e => e.stopPropagation()}
               >
                 <button
-                  className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-[10px] border border-(--card-border) text-[13px] font-medium text-(--text-secondary) bg-transparent hover:bg-(--card-hover) hover:text-(--text-primary) transition-colors cursor-pointer ${viewMode === "grid" ? "flex-1" : ""}`}
+                  className={`h-10 flex items-center justify-center gap-1.5 px-3 rounded-2xl border border-(--card-border) text-[13px] font-medium text-(--text-secondary) bg-transparent hover:bg-(--card-hover) hover:text-(--text-primary) transition-colors cursor-pointer ${viewMode === "grid" ? "flex-1" : ""}`}
                   onClick={() => navigate(`/pages/${page.id}`)}
                 >
                   <Pencil className="w-3.5 h-3.5" /> {viewMode === "grid" && "Editar"}
@@ -305,14 +309,14 @@ export default function PagesIndex() {
                     href={`/p/${page.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center px-2.5 rounded-[10px] border border-(--card-border) text-(--text-secondary) hover:bg-(--card-hover) hover:text-(--text-primary) transition-colors cursor-pointer"
+                    className="h-10 w-10 flex items-center justify-center rounded-2xl border border-(--card-border) text-(--text-secondary) hover:bg-(--card-hover) hover:text-(--text-primary) transition-colors cursor-pointer"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center justify-center px-2.5 rounded-[10px] border border-(--card-border) text-(--text-secondary) hover:bg-(--card-hover) hover:text-(--text-primary) transition-colors cursor-pointer">
+                    <button className="h-10 w-10 flex items-center justify-center rounded-2xl border border-(--card-border) text-(--text-secondary) hover:bg-(--card-hover) hover:text-(--text-primary) transition-colors cursor-pointer">
                       <FolderInput className="w-3.5 h-3.5" />
                     </button>
                   </DropdownMenuTrigger>
@@ -341,7 +345,7 @@ export default function PagesIndex() {
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <button
-                  className="flex items-center justify-center px-2.5 rounded-[10px] text-(--text-tertiary) hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                  className="h-10 w-10 flex items-center justify-center rounded-2xl text-(--text-tertiary) hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                   onClick={() => handleDelete(page)}
                 >
                   <Trash2 className="w-3.5 h-3.5" />

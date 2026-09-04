@@ -366,7 +366,7 @@ export default function PageDetail() {
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => navigate("/pages")}
-          className="h-8 w-8 flex items-center justify-center text-(--text-tertiary) hover:text-(--text-primary) hover:bg-(--card-hover) rounded-[8px] transition-colors"
+          className="h-10 w-10 flex items-center justify-center text-(--text-tertiary) hover:text-(--text-primary) hover:bg-(--card-hover) rounded-2xl border border-(--card-border) transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -384,7 +384,6 @@ export default function PageDetail() {
         {/* Despublicar/Publicar */}
         <Button
           variant="outline"
-          size="sm"
           onClick={handleTogglePublish}
           disabled={updatePage.isPending}
           className="gap-2 text-sm"
@@ -399,7 +398,7 @@ export default function PageDetail() {
         <button
           onClick={() => { setSettingsSection('info'); setShowSettingsModal(true) }}
           title="Configurações"
-          className="h-9 w-9 flex items-center justify-center text-(--text-tertiary) hover:text-(--text-primary) hover:bg-(--card-hover) rounded-full border border-(--card-border) transition-colors"
+          className="h-10 w-10 flex items-center justify-center text-(--text-tertiary) hover:text-(--text-primary) hover:bg-(--card-hover) rounded-2xl border border-(--card-border) transition-colors"
         >
           <Settings className="w-4 h-4" />
         </button>
@@ -494,11 +493,11 @@ export default function PageDetail() {
             <code className="flex-1 text-[13px] text-(--text-secondary) truncate">
               {PUBLIC_URL}/p/{page.slug}
             </code>
-            <button onClick={handleCopyLink} className="p-2 hover:bg-(--card-hover) text-(--text-tertiary) hover:text-(--text-primary) rounded-[10px] transition-colors">
+            <button onClick={handleCopyLink} className="p-2 hover:bg-(--card-hover) text-(--text-tertiary) hover:text-(--text-primary) rounded-2xl transition-colors">
               <Copy className="w-4 h-4" />
             </button>
             {page.status === "published" && (
-              <a href={`/p/${page.slug}`} target="_blank" rel="noopener noreferrer" className="p-2 hover:bg-(--card-hover) text-(--text-tertiary) hover:text-(--text-primary) rounded-[10px] transition-colors">
+              <a href={`/p/${page.slug}`} target="_blank" rel="noopener noreferrer" className="p-2 hover:bg-(--card-hover) text-(--text-tertiary) hover:text-(--text-primary) rounded-2xl transition-colors">
                 <ExternalLink className="w-4 h-4" />
               </a>
             )}

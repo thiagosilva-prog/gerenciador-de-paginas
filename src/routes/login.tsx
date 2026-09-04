@@ -137,7 +137,7 @@ export default function Login() {
               style={{
                 width: '100%', height: 44, marginTop: 4,
                 background: isLoggingIn ? '#f5a623' : '#FBB03B',
-                color: '#000000', border: 'none', borderRadius: 9999,
+                color: '#000000', border: 'none', borderRadius: 16,
                 fontSize: 14, fontWeight: 600, cursor: isLoggingIn ? 'not-allowed' : 'pointer',
                 letterSpacing: '-0.2px', fontFamily: 'inherit',
                 opacity: isLoggingIn ? 0.7 : 1,
