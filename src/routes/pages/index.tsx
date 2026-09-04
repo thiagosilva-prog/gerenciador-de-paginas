@@ -245,35 +245,35 @@ export default function PagesIndex() {
               className="bg-(--card-bg) border border-(--card-border) rounded-[14px] hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors cursor-pointer group p-3.5 flex items-center gap-4"
               onClick={() => navigate(`/pages/${page.id}`)}
             >
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-[15px] text-(--text-primary) mb-1" style={{ letterSpacing: '-0.2px' }}>{page.nome}</h3>
+              <div className="flex items-baseline gap-2 min-w-0">
+                <h3 className="font-semibold text-[15px] text-(--text-primary) truncate" style={{ letterSpacing: '-0.2px' }}>{page.nome}</h3>
                 <p className="text-[13px] text-(--text-tertiary) truncate">/{page.slug}</p>
               </div>
 
               <div
-                className="flex gap-2 shrink-0"
+                className="flex items-center gap-3 shrink-0"
                 onClick={e => e.stopPropagation()}
               >
                 <button
-                  className="h-10 flex items-center justify-center gap-1.5 px-3 rounded-2xl border border-(--card-border) text-[13px] font-medium text-(--text-secondary) bg-transparent hover:bg-(--card-hover) hover:text-(--text-primary) transition-colors cursor-pointer"
+                  className="text-[13px] font-medium text-(--text-secondary) underline underline-offset-4 decoration-(--card-border) hover:text-(--text-primary) hover:decoration-(--text-primary) transition-colors cursor-pointer"
                   onClick={() => navigate(`/pages/${page.id}`)}
                 >
-                  <Pencil className="w-3.5 h-3.5" />
+                  Editar
                 </button>
                 {page.status === "published" && (
                   <a
                     href={`/p/${page.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="h-10 w-10 flex items-center justify-center rounded-2xl border border-(--card-border) text-(--text-secondary) hover:bg-(--card-hover) hover:text-(--text-primary) transition-colors cursor-pointer"
+                    className="text-[13px] font-medium text-(--text-secondary) underline underline-offset-4 decoration-(--card-border) hover:text-(--text-primary) hover:decoration-(--text-primary) transition-colors cursor-pointer"
                   >
-                    <ExternalLink className="w-3.5 h-3.5" />
+                    Abrir
                   </a>
                 )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="h-10 w-10 flex items-center justify-center rounded-2xl border border-(--card-border) text-(--text-secondary) hover:bg-(--card-hover) hover:text-(--text-primary) transition-colors cursor-pointer">
-                      <FolderInput className="w-3.5 h-3.5" />
+                    <button className="text-[13px] font-medium text-(--text-secondary) underline underline-offset-4 decoration-(--card-border) hover:text-(--text-primary) hover:decoration-(--text-primary) transition-colors cursor-pointer">
+                      Mover
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -301,14 +301,14 @@ export default function PagesIndex() {
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <button
-                  className="h-10 w-10 flex items-center justify-center rounded-2xl text-(--text-tertiary) hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                  className="text-[13px] font-medium text-(--text-tertiary) underline underline-offset-4 decoration-(--card-border) hover:text-red-500 hover:decoration-red-500 transition-colors cursor-pointer"
                   onClick={() => handleDelete(page)}
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  Excluir
                 </button>
               </div>
 
-              <div className="hidden sm:flex items-center justify-end gap-3 shrink-0 w-[190px]">
+              <div className="hidden sm:flex items-center justify-end gap-3 shrink-0 w-[190px] ml-auto">
                 {page.status === "published" ? (
                   <span className="shrink-0 w-[72px] text-center text-[12px] font-semibold px-2 py-0.5 rounded-[4px] bg-emerald-500/10 text-emerald-500">
                     Publicada
