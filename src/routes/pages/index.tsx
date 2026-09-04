@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate } from "react-router";
-import { Plus, FileText, Folder, FolderOpen, Globe, Trash2, Pencil, ExternalLink, LogOut, MoreVertical, ArrowLeft, FolderInput } from "lucide-react";
+import { Plus, FileText, Folder, FolderOpen, Globe, Trash2, Pencil, ExternalLink, LogOut, MoreVertical, ArrowLeft, FolderInput, LayoutGrid, List } from "lucide-react";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../components/ui/dialog";
 import {
@@ -27,6 +27,7 @@ export default function PagesIndex() {
   const [newPageSlug, setNewPageSlug] = React.useState("");
   const [slugManual, setSlugManual] = React.useState(false);
 
+  const [viewMode, setViewMode] = React.useState<"grid" | "list">("grid");
   const [currentFolderId, setCurrentFolderId] = React.useState<string | null>(null);
   const [folderDialog, setFolderDialog] = React.useState<{ mode: "create" | "rename"; folder?: PageFolder } | null>(null);
   const [folderNome, setFolderNome] = React.useState("");
@@ -178,13 +179,37 @@ export default function PagesIndex() {
         </div>
       </div>
 
+      {/* Alternar visualização */}
+      <div className="max-w-3xl mx-auto flex items-center gap-4 border-b border-(--card-border)">
+        <button
+          onClick={() => setViewMode("grid")}
+          className={`flex items-center gap-1.5 pb-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors cursor-pointer ${
+            viewMode === "grid"
+              ? "border-[#FBB03B] text-(--text-primary)"
+              : "border-transparent text-(--text-tertiary) hover:text-(--text-primary)"
+          }`}
+        >
+          <LayoutGrid className="w-3.5 h-3.5" /> Visualização
+        </button>
+        <button
+          onClick={() => setViewMode("list")}
+          className={`flex items-center gap-1.5 pb-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors cursor-pointer ${
+            viewMode === "list"
+              ? "border-[#FBB03B] text-(--text-primary)"
+              : "border-transparent text-(--text-tertiary) hover:text-(--text-primary)"
+          }`}
+        >
+          <List className="w-3.5 h-3.5" /> Lista
+        </button>
+      </div>
+
       {/* Conteúdo */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(3)].map((_, j) => <Skeleton key={j} className="h-36 rounded-xl" />)}
+        <div className="max-w-3xl mx-auto space-y-3">
+          {[...Array(3)].map((_, j) => <Skeleton key={j} className="h-20 rounded-xl" />)}
         </div>
       ) : visiblePages.length === 0 && (currentFolderId || folders.length === 0) ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center border-dashed bg-(--card-bg) border border-(--card-border) rounded-[14px]">
+        <div className="max-w-3xl mx-auto flex flex-col items-center justify-center py-24 text-center border-dashed bg-(--card-bg) border border-(--card-border) rounded-[14px]">
           <div className="h-14 w-14 rounded-full bg-(--card-hover) border border-(--card-border) flex items-center justify-center mb-4">
             <Globe className="h-6 w-6 text-(--text-tertiary)" />
           </div>
@@ -200,51 +225,52 @@ export default function PagesIndex() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {!currentFolderId && folders.map(folder => {
-            const count = paginas.filter(p => p.folder_id === folder.id).length;
-            return (
-              <div
-                key={folder.id}
-                className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-5 hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors flex items-start gap-3 cursor-pointer group"
-                onClick={() => setCurrentFolderId(folder.id)}
-              >
-                <div className="h-10 w-10 rounded-[10px] bg-(--card-hover) flex items-center justify-center shrink-0">
-                  <FolderOpen className="h-5 w-5 text-[#FBB03B]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-[15px] text-(--text-primary) mb-0.5 truncate" style={{ letterSpacing: '-0.2px' }}>{folder.nome}</h3>
-                  <p className="text-[12px] text-(--text-tertiary)">{count} página{count === 1 ? "" : "s"}</p>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      className="h-7 w-7 flex items-center justify-center text-(--text-tertiary) hover:text-(--text-primary) hover:bg-(--card-hover) rounded-full transition-colors shrink-0"
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
-                    <DropdownMenuItem onClick={() => { setFolderDialog({ mode: "rename", folder }); setFolderNome(folder.nome); }}>
-                      <Pencil className="w-3.5 h-3.5 mr-2" /> Renomear pasta
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleDeleteFolder(folder)} className="text-red-500 focus:text-red-500">
-                      <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir pasta
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+        <div className={`max-w-3xl mx-auto ${viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 gap-4" : "flex flex-col gap-2"}`}>
+          {!currentFolderId && folders.map(folder => (
+            <div
+              key={folder.id}
+              className={`bg-(--card-bg) border border-(--card-border) rounded-[14px] hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors cursor-pointer group flex items-center gap-3 ${
+                viewMode === "grid" ? "p-5 items-start" : "p-3.5"
+              }`}
+              onClick={() => setCurrentFolderId(folder.id)}
+            >
+              <div className="h-10 w-10 rounded-[10px] bg-(--card-hover) flex items-center justify-center shrink-0">
+                <FolderOpen className="h-5 w-5 text-[#FBB03B]" />
               </div>
-            );
-          })}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-[15px] text-(--text-primary) mb-0.5 truncate" style={{ letterSpacing: '-0.2px' }}>{folder.nome}</h3>
+                <p className="text-[12px] text-(--text-tertiary)">{paginas.filter(p => p.folder_id === folder.id).length} página{paginas.filter(p => p.folder_id === folder.id).length === 1 ? "" : "s"}</p>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="h-7 w-7 flex items-center justify-center text-(--text-tertiary) hover:text-(--text-primary) hover:bg-(--card-hover) rounded-full transition-colors shrink-0"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                  <DropdownMenuItem onClick={() => { setFolderDialog({ mode: "rename", folder }); setFolderNome(folder.nome); }}>
+                    <Pencil className="w-3.5 h-3.5 mr-2" /> Renomear pasta
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleDeleteFolder(folder)} className="text-red-500 focus:text-red-500">
+                    <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir pasta
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ))}
 
           {visiblePages.map(page => (
             <div
               key={page.id}
-              className="bg-(--card-bg) border border-(--card-border) rounded-[14px] p-5 hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors flex flex-col gap-3 cursor-pointer group"
+              className={`bg-(--card-bg) border border-(--card-border) rounded-[14px] hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors cursor-pointer group ${
+                viewMode === "grid" ? "p-5 flex flex-col gap-3" : "p-3.5 flex items-center gap-4"
+              }`}
               onClick={() => navigate(`/pages/${page.id}`)}
             >
-              <div className="flex items-start justify-between gap-2">
+              <div className={viewMode === "grid" ? "flex items-start justify-between gap-2" : "flex-1 min-w-0 flex items-center gap-3"}>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-[15px] text-(--text-primary) mb-1" style={{ letterSpacing: '-0.2px' }}>{page.nome}</h3>
                   <p className="text-[13px] text-(--text-tertiary) truncate">/{page.slug}</p>
@@ -260,16 +286,19 @@ export default function PagesIndex() {
                 )}
               </div>
 
-              <p className="text-[12px] text-(--text-tertiary)">
+              <p className={`text-[12px] text-(--text-tertiary) shrink-0 ${viewMode === "grid" ? "" : "hidden sm:block"}`}>
                 Atualizada {formatDistanceToNow(new Date(page.atualizado_em), { locale: ptBR, addSuffix: true })}
               </p>
 
-              <div className="flex gap-2 mt-auto pt-4 border-t border-(--card-border)" onClick={e => e.stopPropagation()}>
+              <div
+                className={`flex gap-2 ${viewMode === "grid" ? "mt-auto pt-4 border-t border-(--card-border)" : "shrink-0"}`}
+                onClick={e => e.stopPropagation()}
+              >
                 <button
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-[10px] border border-(--card-border) text-[13px] font-medium text-(--text-secondary) bg-transparent hover:bg-(--card-hover) hover:text-(--text-primary) transition-colors cursor-pointer"
+                  className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-[10px] border border-(--card-border) text-[13px] font-medium text-(--text-secondary) bg-transparent hover:bg-(--card-hover) hover:text-(--text-primary) transition-colors cursor-pointer ${viewMode === "grid" ? "flex-1" : ""}`}
                   onClick={() => navigate(`/pages/${page.id}`)}
                 >
-                  <Pencil className="w-3.5 h-3.5" /> Editar
+                  <Pencil className="w-3.5 h-3.5" /> {viewMode === "grid" && "Editar"}
                 </button>
                 {page.status === "published" && (
                   <a
@@ -323,9 +352,11 @@ export default function PagesIndex() {
 
           <button
             onClick={() => setShowCreateModal(true)}
-            className="border border-dashed border-(--card-border) bg-(--card-bg) rounded-[14px] p-5 flex flex-col items-center justify-center gap-2 text-(--text-tertiary) hover:bg-[#FBB03B]/5 hover:border-[#FBB03B]/30 hover:text-[#FBB03B] transition-colors min-h-[120px] group cursor-pointer"
+            className={`border border-dashed border-(--card-border) bg-(--card-bg) rounded-[14px] flex items-center justify-center gap-2 text-(--text-tertiary) hover:bg-[#FBB03B]/5 hover:border-[#FBB03B]/30 hover:text-[#FBB03B] transition-colors group cursor-pointer ${
+              viewMode === "grid" ? "flex-col p-5 min-h-[120px]" : "p-3.5"
+            }`}
           >
-            <Plus className="w-6 h-6 group-hover:scale-110 transition-transform" />
+            <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
             <span className="text-[13px] font-medium">Nova página</span>
           </button>
         </div>
