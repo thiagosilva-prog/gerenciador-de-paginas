@@ -245,67 +245,69 @@ export default function PagesIndex() {
               className="bg-(--card-bg) border border-(--card-border) rounded-[14px] hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors cursor-pointer group p-3.5 flex items-center gap-4"
               onClick={() => navigate(`/pages/${page.id}`)}
             >
-              <div className="flex items-baseline gap-2 min-w-0">
-                <h3 className="font-semibold text-[15px] text-(--text-primary) truncate" style={{ letterSpacing: '-0.2px' }}>{page.nome}</h3>
-                <p className="text-[13px] text-(--text-tertiary) truncate">/{page.slug}</p>
-              </div>
+              <div className="flex flex-col gap-1.5 min-w-0">
+                <div className="flex items-baseline gap-2 min-w-0">
+                  <h3 className="font-semibold text-[15px] text-(--text-primary) truncate" style={{ letterSpacing: '-0.2px' }}>{page.nome}</h3>
+                  <p className="text-[13px] text-(--text-tertiary) truncate">/{page.slug}</p>
+                </div>
 
-              <div
-                className="flex items-center gap-3 shrink-0"
-                onClick={e => e.stopPropagation()}
-              >
-                <button
-                  className="text-[13px] font-medium text-(--text-secondary) underline underline-offset-4 decoration-(--card-border) hover:text-(--text-primary) hover:decoration-(--text-primary) transition-colors cursor-pointer"
-                  onClick={() => navigate(`/pages/${page.id}`)}
+                <div
+                  className="flex items-center gap-3 shrink-0"
+                  onClick={e => e.stopPropagation()}
                 >
-                  Editar
-                </button>
-                {page.status === "published" && (
-                  <a
-                    href={`/p/${page.slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
                     className="text-[13px] font-medium text-(--text-secondary) underline underline-offset-4 decoration-(--card-border) hover:text-(--text-primary) hover:decoration-(--text-primary) transition-colors cursor-pointer"
+                    onClick={() => navigate(`/pages/${page.id}`)}
                   >
-                    Abrir
-                  </a>
-                )}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="text-[13px] font-medium text-(--text-secondary) underline underline-offset-4 decoration-(--card-border) hover:text-(--text-primary) hover:decoration-(--text-primary) transition-colors cursor-pointer">
-                      Mover
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {folders.length === 0 ? (
-                      <DropdownMenuItem disabled>Nenhuma pasta criada</DropdownMenuItem>
-                    ) : (
-                      folders.map(folder => (
-                        <DropdownMenuItem
-                          key={folder.id}
-                          disabled={page.folder_id === folder.id}
-                          onClick={() => handleMovePage(page, folder.id)}
-                        >
-                          <Folder className="w-3.5 h-3.5 mr-2" /> {folder.nome}
-                        </DropdownMenuItem>
-                      ))
-                    )}
-                    {page.folder_id && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleMovePage(page, null)}>
-                          Remover da pasta
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <button
-                  className="text-[13px] font-medium text-(--text-tertiary) underline underline-offset-4 decoration-(--card-border) hover:text-red-500 hover:decoration-red-500 transition-colors cursor-pointer"
-                  onClick={() => handleDelete(page)}
-                >
-                  Excluir
-                </button>
+                    Editar
+                  </button>
+                  {page.status === "published" && (
+                    <a
+                      href={`/p/${page.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[13px] font-medium text-(--text-secondary) underline underline-offset-4 decoration-(--card-border) hover:text-(--text-primary) hover:decoration-(--text-primary) transition-colors cursor-pointer"
+                    >
+                      Abrir
+                    </a>
+                  )}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="text-[13px] font-medium text-(--text-secondary) underline underline-offset-4 decoration-(--card-border) hover:text-(--text-primary) hover:decoration-(--text-primary) transition-colors cursor-pointer">
+                        Mover
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {folders.length === 0 ? (
+                        <DropdownMenuItem disabled>Nenhuma pasta criada</DropdownMenuItem>
+                      ) : (
+                        folders.map(folder => (
+                          <DropdownMenuItem
+                            key={folder.id}
+                            disabled={page.folder_id === folder.id}
+                            onClick={() => handleMovePage(page, folder.id)}
+                          >
+                            <Folder className="w-3.5 h-3.5 mr-2" /> {folder.nome}
+                          </DropdownMenuItem>
+                        ))
+                      )}
+                      {page.folder_id && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleMovePage(page, null)}>
+                            Remover da pasta
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <button
+                    className="text-[13px] font-medium text-(--text-tertiary) underline underline-offset-4 decoration-(--card-border) hover:text-red-500 hover:decoration-red-500 transition-colors cursor-pointer"
+                    onClick={() => handleDelete(page)}
+                  >
+                    Excluir
+                  </button>
+                </div>
               </div>
 
               <div className="hidden sm:flex items-center justify-end gap-3 shrink-0 w-[190px] ml-auto">
