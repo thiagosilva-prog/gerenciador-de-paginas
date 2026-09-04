@@ -16,7 +16,7 @@ import {
   useFolders, useCreateFolder, useRenameFolder, useDeleteFolder, type PageFolder,
 } from "../../hooks/usePages";
 import { useAuth } from "../../hooks/useAuth";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNowStrict } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export default function PagesIndex() {
@@ -245,25 +245,10 @@ export default function PagesIndex() {
               className="bg-(--card-bg) border border-(--card-border) rounded-[14px] hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors cursor-pointer group p-3.5 flex items-center gap-4"
               onClick={() => navigate(`/pages/${page.id}`)}
             >
-              <div className="flex-1 min-w-0 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-[15px] text-(--text-primary) mb-1" style={{ letterSpacing: '-0.2px' }}>{page.nome}</h3>
-                  <p className="text-[13px] text-(--text-tertiary) truncate">/{page.slug}</p>
-                </div>
-                {page.status === "published" ? (
-                  <span className="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-[4px] bg-emerald-500/10 text-emerald-500">
-                    Publicada
-                  </span>
-                ) : (
-                  <span className="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-[4px] bg-(--card-hover) text-(--text-tertiary)">
-                    Rascunho
-                  </span>
-                )}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-[15px] text-(--text-primary) mb-1" style={{ letterSpacing: '-0.2px' }}>{page.nome}</h3>
+                <p className="text-[13px] text-(--text-tertiary) truncate">/{page.slug}</p>
               </div>
-
-              <p className="text-[12px] text-(--text-tertiary) shrink-0 hidden sm:block">
-                Atualizada {formatDistanceToNow(new Date(page.atualizado_em), { locale: ptBR, addSuffix: true })}
-              </p>
 
               <div
                 className="flex gap-2 shrink-0"
@@ -321,6 +306,21 @@ export default function PagesIndex() {
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
+              </div>
+
+              <div className="hidden sm:flex items-center justify-end gap-3 shrink-0 w-[190px]">
+                {page.status === "published" ? (
+                  <span className="shrink-0 w-[72px] text-center text-[12px] font-semibold px-2 py-0.5 rounded-[4px] bg-emerald-500/10 text-emerald-500">
+                    Publicada
+                  </span>
+                ) : (
+                  <span className="shrink-0 w-[72px] text-center text-[12px] font-semibold px-2 py-0.5 rounded-[4px] bg-(--card-hover) text-(--text-tertiary)">
+                    Rascunho
+                  </span>
+                )}
+                <p className="text-[12px] text-(--text-tertiary) text-right flex-1 truncate">
+                  Atualizada há {formatDistanceToNowStrict(new Date(page.atualizado_em), { locale: ptBR })}
+                </p>
               </div>
             </div>
           ))}
