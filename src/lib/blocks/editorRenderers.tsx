@@ -382,6 +382,7 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
     selector: string
     tag: string
     isShape: boolean
+    isImage: boolean
   } | null>(null)
 
   // Estilos vivos do elemento selecionado
@@ -430,6 +431,24 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
         el.style.borderRadius = value + 'px'
       } else if (styleKey === 'width') {
         el.style.width = value
+      } else if (styleKey === 'paddingAll') {
+        el.style.padding = value + 'px'
+      } else if (styleKey === 'marginAll') {
+        el.style.margin = value + 'px'
+      } else if (styleKey === 'borderWidth') {
+        el.style.borderWidth = value + 'px'
+        el.style.borderStyle = Number(value) > 0 ? 'solid' : 'none'
+      } else if (styleKey === 'borderColor') {
+        el.style.borderColor = value
+      } else if (styleKey === 'boxShadowOn') {
+        el.style.boxShadow = value ? '0 4px 16px rgba(0,0,0,0.18)' : 'none'
+      } else if (styleKey === 'objectFit') {
+        el.style.objectFit = value
+      } else if (styleKey === 'src' && el.tagName === 'IMG') {
+        (el as HTMLImageElement).src = value
+        el.setAttribute('src', value)
+      } else if (styleKey === 'alt' && el.tagName === 'IMG') {
+        el.setAttribute('alt', value)
       } else if (styleKey === 'href') {
         if (el.tagName === 'A') {
           (el as HTMLAnchorElement).href = value
@@ -477,7 +496,7 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
     // ── FIM do bloco novo ──
 
     const SHAPE_TAGS = ['BUTTON', 'A']
-    const EDITABLE_TAGS = ['P','H1','H2','H3','H4','H5','H6','SPAN','A','LI','BUTTON','LABEL','TD','TH']
+    const EDITABLE_TAGS = ['P','H1','H2','H3','H4','H5','H6','SPAN','A','LI','BUTTON','LABEL','TD','TH','IMG']
 
     const handleClick = (e: MouseEvent) => {
       const el = e.target as HTMLElement
@@ -497,10 +516,11 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
       }
       const selector = path.join(' > ')
       const isShape = SHAPE_TAGS.includes(el.tagName.toUpperCase())
+      const isImage = el.tagName.toUpperCase() === 'IMG'
 
       // Lê estilos atuais do elemento (computados + inline)
       const cs = window.getComputedStyle
-        ? (iframeRef.current?.contentWindow as any)?.getComputedStyle(el) 
+        ? (iframeRef.current?.contentWindow as any)?.getComputedStyle(el)
         : null
 
       const readPx = (v: string) => parseInt(v) || 0
@@ -516,13 +536,21 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
         backgroundColor: el.style.backgroundColor || (cs ? cs.backgroundColor : 'transparent'),
         borderRadius: cs ? readPx(cs.borderRadius) : 0,
         width: el.style.width || '',
+        paddingAll: cs ? readPx(cs.paddingTop) : 0,
+        marginAll: cs ? readPx(cs.marginTop) : 0,
+        borderWidth: cs ? readPx(cs.borderTopWidth) : 0,
+        borderColor: el.style.borderColor || (cs ? cs.borderTopColor : '#000000'),
+        boxShadowOn: !!(el.style.boxShadow && el.style.boxShadow !== 'none'),
+        objectFit: (cs ? cs.objectFit : 'cover') || 'cover',
+        src: isImage ? (el as HTMLImageElement).src : '',
+        alt: isImage ? (el.getAttribute('alt') || '') : '',
       })
 
       // Lê href se for link
       const href = el.tagName === 'A' ? (el as HTMLAnchorElement).getAttribute('href') || '' : ''
       setLiveStyles((prev: any) => ({ ...prev, href }))
 
-      setSelectedElement({ selector, tag: el.tagName.toLowerCase(), isShape })
+      setSelectedElement({ selector, tag: el.tagName.toLowerCase(), isShape, isImage })
     }
 
     doc.addEventListener('click', handleClick)
@@ -551,6 +579,35 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
     setSelectedElement(null)
   }, [onChange])
 
+  const duplicateElement = React.useCallback(() => {
+    const doc = iframeRef.current?.contentDocument
+    if (!doc || !selectedElement) return
+    try {
+      const el = doc.querySelector(selectedElement.selector) as HTMLElement | null
+      if (!el || !el.parentElement) return
+      el.parentElement.insertBefore(el.cloneNode(true), el.nextSibling)
+    } catch {}
+    applyAndSave()
+  }, [selectedElement, applyAndSave])
+
+  const deleteElement = React.useCallback(() => {
+    const doc = iframeRef.current?.contentDocument
+    if (!doc || !selectedElement) return
+    try {
+      const el = doc.querySelector(selectedElement.selector) as HTMLElement | null
+      el?.remove()
+    } catch {}
+    applyAndSave()
+  }, [selectedElement, applyAndSave])
+
+  const handleImageFile = React.useCallback((file: File) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') applyStyle('src', reader.result)
+    }
+    reader.readAsDataURL(file)
+  }, [applyStyle])
+
   const s = liveStyles
 
   return (
@@ -578,13 +635,19 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
             <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' as const, fontWeight: 600, letterSpacing: '0.06em' }}>
               &lt;{selectedElement.tag}&gt;
             </span>
-            <button onClick={() => setSelectedElement(null)}
-              style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '16px', padding: 0, lineHeight: 1 }}>✕</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button onClick={duplicateElement} title="Duplicar elemento"
+                style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '11px', fontWeight: 600, padding: 0 }}>Duplicar</button>
+              <button onClick={deleteElement} title="Excluir elemento"
+                style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '11px', fontWeight: 600, padding: 0 }}>Excluir</button>
+              <button onClick={() => setSelectedElement(null)}
+                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '16px', padding: 0, lineHeight: 1 }}>✕</button>
+            </div>
           </div>
 
-          {/* ── CONTROLES DE TEXTO ── */}
+          {/* ── CONTROLES DE TEXTO (não se aplica a imagens) ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-
+            {!selectedElement.isImage && <>
             {/* Fonte */}
             <div>
               <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Fonte</label>
@@ -653,6 +716,50 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
                 })}
               </div>
             </div>
+            </>}
+
+            {/* ── CONTROLES DE IMAGEM (só <img>) ── */}
+            {selectedElement.isImage && (
+              <div>
+                <label style={{ fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', display: 'block', marginBottom: '10px' }}>Imagem</label>
+
+                <div style={{ marginBottom: '10px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>URL da imagem</label>
+                  <input type="text" value={s.src || ''} placeholder="https://..."
+                    onChange={e => applyStyle('src', e.target.value)}
+                    style={{ width: '100%', fontSize: '12px', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '6px 8px', color: '#1e293b', background: '#fff', boxSizing: 'border-box' as const }} />
+                </div>
+
+                <div style={{ marginBottom: '10px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Enviar arquivo</label>
+                  <input type="file" accept="image/*"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f) }}
+                    style={{ width: '100%', fontSize: '11px' }} />
+                </div>
+
+                <div style={{ marginBottom: '10px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Texto alternativo (alt)</label>
+                  <input type="text" value={s.alt || ''} placeholder="Descrição da imagem"
+                    onChange={e => applyStyle('alt', e.target.value)}
+                    style={{ width: '100%', fontSize: '12px', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '6px 8px', color: '#1e293b', background: '#fff', boxSizing: 'border-box' as const }} />
+                </div>
+
+                <div style={{ marginBottom: '10px' }}>
+                  <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Ajuste</label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {['cover', 'contain', 'fill', 'none'].map(v => {
+                      const active = (s.objectFit || 'cover') === v
+                      return (
+                        <button key={v} onClick={() => applyStyle('objectFit', v)}
+                          style={{ flex: 1, padding: '6px 2px', borderRadius: '6px', border: `1px solid ${active ? '#FBB03B' : '#e2e8f0'}`, background: active ? '#FBB03B' : '#fff', cursor: 'pointer', fontSize: '10px', fontWeight: 600, color: active ? '#1A1A1A' : '#475569' }}>
+                          {v}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* ── CONTROLES DE SHAPE ── */}
             <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '12px', marginTop: '4px' }}>
@@ -683,6 +790,44 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
                 <input type="text" value={s.width || ''} placeholder="ex: 200px ou 100%"
                   onChange={e => applyStyle('width', e.target.value)}
                   style={{ width: '100%', fontSize: '12px', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '6px 8px', color: '#1e293b', background: '#fff', boxSizing: 'border-box' as const }} />
+              </div>
+
+              {/* Espaçamento interno */}
+              <div style={{ marginBottom: '10px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Espaçamento interno (padding) — {s.paddingAll ?? 0}px</label>
+                <input type="range" min="0" max="100" value={s.paddingAll ?? 0}
+                  onChange={e => applyStyle('paddingAll', Number(e.target.value))}
+                  style={{ width: '100%', accentColor: '#FBB03B' }} />
+              </div>
+
+              {/* Espaçamento externo */}
+              <div style={{ marginBottom: '10px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Espaçamento externo (margin) — {s.marginAll ?? 0}px</label>
+                <input type="range" min="0" max="100" value={s.marginAll ?? 0}
+                  onChange={e => applyStyle('marginAll', Number(e.target.value))}
+                  style={{ width: '100%', accentColor: '#FBB03B' }} />
+              </div>
+
+              {/* Borda */}
+              <div style={{ marginBottom: '10px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Borda — {s.borderWidth ?? 0}px</label>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input type="range" min="0" max="20" value={s.borderWidth ?? 0}
+                    onChange={e => applyStyle('borderWidth', Number(e.target.value))}
+                    style={{ flex: 1, accentColor: '#FBB03B' }} />
+                  <input type="color" value={s.borderColor?.startsWith('rgb') ? '#000000' : (s.borderColor || '#000000')}
+                    onChange={e => applyStyle('borderColor', e.target.value)}
+                    style={{ width: '32px', height: '32px', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '2px', cursor: 'pointer' }} />
+                </div>
+              </div>
+
+              {/* Sombra */}
+              <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label style={{ fontSize: '11px', fontWeight: 600, color: '#475569' }}>Sombra</label>
+                <button onClick={() => applyStyle('boxShadowOn', !s.boxShadowOn)}
+                  style={{ width: '40px', height: '22px', borderRadius: '11px', border: 'none', cursor: 'pointer', background: s.boxShadowOn ? '#FBB03B' : '#e2e8f0', position: 'relative', transition: 'background 0.15s' }}>
+                  <span style={{ position: 'absolute', top: '2px', left: s.boxShadowOn ? '20px' : '2px', width: '18px', height: '18px', borderRadius: '50%', background: '#fff', transition: 'left 0.15s' }} />
+                </button>
               </div>
 
               {/* Link — só aparece para <a> e <button> */}
