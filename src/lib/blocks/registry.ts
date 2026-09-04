@@ -324,11 +324,12 @@ export const blockRegistry: BlockDefinition[] = [
           </div>
           <div style="flex: 1; min-width: 300px;">
             <div style="background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);">
-              <form onsubmit="event.preventDefault(); window.KVSubmitForm && window.KVSubmitForm(Object.fromEntries(new FormData(this)))" style="display: flex; flex-direction: column; gap: 20px;">
-                ${(data.campos || []).map((c: any, i: number) => `
+              <form onsubmit="event.preventDefault(); window.KVSubmitForm && window.KVSubmitForm(this)" style="display: flex; flex-direction: column; gap: 20px;">
+                <input type="hidden" name="page_id" value="{{PAGE_ID}}" />
+                ${(data.campos || []).map((c: any) => `
                   <div>
                     <label style="display: block; font-size: 14px; font-weight: 600; color: #334155; margin-bottom: 8px;">${c.label} ${c.obrigatorio ? '<span style="color:#ef4444">*</span>' : ''}</label>
-                    <input type="${c.tipo || 'text'}" name="field_${i}" ${c.obrigatorio ? 'required' : ''} style="width: 100%; padding: 14px 16px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='${data.botao_cor || '#0f172a'}'" onblur="this.style.borderColor='#cbd5e1'" />
+                    <input type="${c.tipo || 'text'}" name="${c.tipo === 'email' ? 'email' : c.tipo === 'tel' ? 'telefone' : 'nome'}" ${c.obrigatorio ? 'required' : ''} style="width: 100%; padding: 14px 16px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='${data.botao_cor || '#0f172a'}'" onblur="this.style.borderColor='#cbd5e1'" />
                   </div>
                 `).join('')}
                 <button type="submit" style="background-color: ${data.botao_cor || '#0f172a'}; color: white; border: none; padding: 16px; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px; width: 100%; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">${data.botao_texto}</button>
@@ -336,6 +337,27 @@ export const blockRegistry: BlockDefinition[] = [
             </div>
           </div>
         </div>
+        <script>
+          if(!window.KVSubmitForm){
+            window.KVSubmitForm = function(form){
+              var btn = form.querySelector('button[type=submit]');
+              var originalText = btn ? btn.textContent : '';
+              if(btn){btn.disabled=true;btn.textContent='Enviando...';}
+              var body={};
+              new FormData(form).forEach(function(v,k){body[k]=v;});
+              fetch('/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+                .then(function(r){
+                  if(!r.ok)throw new Error();
+                  if(window.kvTrackConversion) window.kvTrackConversion();
+                  form.innerHTML='<p style="font-weight:600;color:#166534;margin:0;">Obrigado! Recebemos seus dados.</p>';
+                })
+                .catch(function(){
+                  if(btn){btn.disabled=false;btn.textContent=originalText;}
+                  alert('Erro ao enviar. Tente novamente.');
+                });
+            };
+          }
+        </script>
       </section>
     `
   },
@@ -374,13 +396,35 @@ export const blockRegistry: BlockDefinition[] = [
         <div style="max-width: 600px; margin: 0 auto; text-align: center; position: relative; z-index: 10;">
           <h2 style="font-size: 32px; font-weight: 800; color: #0f172a; margin-bottom: 16px;">${data.titulo || ''}</h2>
           <p style="font-size: 18px; color: #475569; margin-bottom: 32px;">${data.subtitulo || ''}</p>
-          <form onsubmit="event.preventDefault(); window.KVSubmitForm && window.KVSubmitForm(Object.fromEntries(new FormData(this)))" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
-            ${(data.campos || []).map((c: any, i: number) => `
-              <input type="${c.tipo || 'text'}" name="field_${i}" placeholder="${c.label}" ${c.obrigatorio ? 'required' : ''} style="flex: 1; min-width: 250px; padding: 16px 20px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='${data.botao_cor || '#0f172a'}'" onblur="this.style.borderColor='#cbd5e1'" />
+          <form onsubmit="event.preventDefault(); window.KVSubmitForm && window.KVSubmitForm(this)" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;">
+            <input type="hidden" name="page_id" value="{{PAGE_ID}}" />
+            ${(data.campos || []).map((c: any) => `
+              <input type="${c.tipo || 'text'}" name="${c.tipo === 'email' ? 'email' : c.tipo === 'tel' ? 'telefone' : 'nome'}" placeholder="${c.label}" ${c.obrigatorio ? 'required' : ''} style="flex: 1; min-width: 250px; padding: 16px 20px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; font-family: 'Inter', sans-serif; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='${data.botao_cor || '#0f172a'}'" onblur="this.style.borderColor='#cbd5e1'" />
             `).join('')}
             <button type="submit" style="background-color: ${data.botao_cor || '#0f172a'}; color: white; border: none; padding: 16px 36px; border-radius: 8px; font-size: 16px; font-weight: 700; cursor: pointer;">${data.botao_texto}</button>
           </form>
         </div>
+        <script>
+          if(!window.KVSubmitForm){
+            window.KVSubmitForm = function(form){
+              var btn = form.querySelector('button[type=submit]');
+              var originalText = btn ? btn.textContent : '';
+              if(btn){btn.disabled=true;btn.textContent='Enviando...';}
+              var body={};
+              new FormData(form).forEach(function(v,k){body[k]=v;});
+              fetch('/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+                .then(function(r){
+                  if(!r.ok)throw new Error();
+                  if(window.kvTrackConversion) window.kvTrackConversion();
+                  form.innerHTML='<p style="font-weight:600;color:#166534;margin:0;">Obrigado! Recebemos seus dados.</p>';
+                })
+                .catch(function(){
+                  if(btn){btn.disabled=false;btn.textContent=originalText;}
+                  alert('Erro ao enviar. Tente novamente.');
+                });
+            };
+          }
+        </script>
       </section>
     `
   },
@@ -623,6 +667,7 @@ export const blockRegistry: BlockDefinition[] = [
               body:JSON.stringify(body)
             }).then(function(r){
               if(!r.ok)throw new Error();
+              if(window.kvTrackConversion) window.kvTrackConversion();
               document.getElementById('kv-lead-form').style.display='none';
               document.getElementById('kv-success-msg').style.display='block';
               ${data.redirect_url ? "setTimeout(function(){window.location.href='" + data.redirect_url + "';},2000);" : ''}

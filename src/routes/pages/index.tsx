@@ -184,7 +184,7 @@ export default function PagesIndex() {
       </div>
 
       {/* Alternar visualização */}
-      <div className="max-w-3xl mx-auto flex items-center gap-4 border-b border-(--card-border)">
+      <div className="w-full flex items-center gap-4 border-b border-(--card-border)">
         <button
           onClick={() => setViewMode("grid")}
           className={`flex items-center gap-1.5 pb-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors cursor-pointer ${
@@ -229,7 +229,7 @@ export default function PagesIndex() {
           </Button>
         </div>
       ) : (
-        <div className={`max-w-3xl mx-auto ${viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 gap-4" : "flex flex-col gap-2"}`}>
+        <div className={viewMode === "grid" ? "max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4" : "w-full flex flex-col gap-2"}>
           {!currentFolderId && folders.map(folder => (
             <div
               key={folder.id}

@@ -32,6 +32,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { usePage, useUpdatePage, useDeletePage, type PageIntegrations, type PageSettings } from "../../hooks/usePages";
+import { getBlockByType } from "../../lib/blocks/registry";
+import { injectIntegrationScripts } from "../../lib/integrations";
 import { useLeads, useDeleteLead, type Lead } from "../../hooks/useLeads";
 import { useReport } from "../../hooks/useReport";
 import { useDomains, useCreateDomain, useDeleteDomain, type Domain } from "../../hooks/useDomains";
@@ -282,9 +284,20 @@ export default function PageDetail() {
 
   const handleSaveIntegrations = async () => {
     setSavingIntegrations(true)
-    await updatePage.mutateAsync({ id: id!, integrations })
+    // Regrava o HTML publicado com os novos scripts: sem isso, mudar uma integração aqui
+    // não tinha efeito nenhum na página no ar até alguém abrir o editor e clicar "Publicar".
+    const blocks = page?.page_data?.blocks || []
+    const renderedHtml = blocks
+      .filter((b) => !b.hidden)
+      .map((b) => {
+        const def = getBlockByType(b.type)
+        return def ? def.render(b.data, b.sectionStyles).replace(/\{\{PAGE_ID\}\}/g, id || '') : ''
+      })
+      .join('\n')
+    const finalHtml = injectIntegrationScripts(renderedHtml, integrations)
+    await updatePage.mutateAsync({ id: id!, integrations, html: finalHtml })
     setSavingIntegrations(false)
-    toast.success('Integrações salvas!')
+    toast.success('Integrações salvas e aplicadas à página!')
   }
 
   // Helper para atualizar campos aninhados
@@ -898,6 +911,37 @@ export default function PageDetail() {
                 />
                 <p className="text-xs text-gray-400 mt-1">
                   Cole aqui o snippet completo de clarity.microsoft.com → seu projeto → Settings → Setup → "Copiar para área de transferência".
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* ── WEBHOOK DE CONVERSÃO ── */}
+          <div className="border border-gray-200 rounded-xl p-5 bg-white">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="font-semibold text-gray-900 text-[15px]">Webhook de conversão</h3>
+                <p className="text-sm text-gray-500 mt-0.5">Recebe um POST com os dados do lead toda vez que alguém converte nessa página</p>
+              </div>
+              <Switch
+                checked={integrations.webhook?.enabled || false}
+                onCheckedChange={v => updateIntegration('webhook', 'enabled', v)}
+                className="data-[state=checked]:bg-[#FBB03B]"
+              />
+            </div>
+            {integrations.webhook?.enabled && (
+              <div className="mt-5 space-y-2 border-t border-gray-100 pt-4">
+                <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                  URL do webhook <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  value={integrations.webhook?.url || ''}
+                  onChange={e => updateIntegration('webhook', 'url', e.target.value)}
+                  placeholder="https://hooks.zapier.com/... ou https://seu-n8n.com/webhook/..."
+                  className="bg-white border-gray-200"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Disparado no momento em que o lead é capturado (mesmo evento que aparece na aba Leads), com nome, e-mail, telefone, UTMs e origem.
                 </p>
               </div>
             )}

@@ -30,6 +30,10 @@ export interface PageIntegrations {
     enabled: boolean
     code: string                // Snippet <script> completo, colado direto do Clarity
   }
+  webhook?: {
+    enabled: boolean
+    url: string                  // URL que recebe um POST a cada lead capturado nessa página
+  }
 }
 
 export interface PageSettings {
