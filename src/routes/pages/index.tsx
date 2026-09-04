@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate } from "react-router";
-import { Plus, FileText, Folder, FolderOpen, Globe, Trash2, Pencil, ExternalLink, LogOut, MoreVertical, ArrowLeft, FolderInput, LayoutGrid, List } from "lucide-react";
+import { Plus, FileText, Folder, FolderOpen, Globe, Trash2, Pencil, ExternalLink, LogOut, MoreVertical, ArrowLeft, FolderInput } from "lucide-react";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../components/ui/dialog";
 import {
@@ -27,7 +27,6 @@ export default function PagesIndex() {
   const [newPageSlug, setNewPageSlug] = React.useState("");
   const [slugManual, setSlugManual] = React.useState(false);
 
-  const [viewMode, setViewMode] = React.useState<"grid" | "list">("grid");
   const [currentFolderId, setCurrentFolderId] = React.useState<string | null>(null);
   const [folderDialog, setFolderDialog] = React.useState<{ mode: "create" | "rename"; folder?: PageFolder } | null>(null);
   const [folderNome, setFolderNome] = React.useState("");
@@ -183,30 +182,6 @@ export default function PagesIndex() {
         </div>
       </div>
 
-      {/* Alternar visualização */}
-      <div className="w-full flex items-center gap-4 border-b border-(--card-border)">
-        <button
-          onClick={() => setViewMode("grid")}
-          className={`flex items-center gap-1.5 pb-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors cursor-pointer ${
-            viewMode === "grid"
-              ? "border-[#FBB03B] text-(--text-primary)"
-              : "border-transparent text-(--text-tertiary) hover:text-(--text-primary)"
-          }`}
-        >
-          <LayoutGrid className="w-3.5 h-3.5" /> Visualização
-        </button>
-        <button
-          onClick={() => setViewMode("list")}
-          className={`flex items-center gap-1.5 pb-2.5 text-[13px] font-medium border-b-2 -mb-px transition-colors cursor-pointer ${
-            viewMode === "list"
-              ? "border-[#FBB03B] text-(--text-primary)"
-              : "border-transparent text-(--text-tertiary) hover:text-(--text-primary)"
-          }`}
-        >
-          <List className="w-3.5 h-3.5" /> Lista
-        </button>
-      </div>
-
       {/* Conteúdo */}
       {loading ? (
         <div className="max-w-3xl mx-auto space-y-3">
@@ -229,13 +204,11 @@ export default function PagesIndex() {
           </Button>
         </div>
       ) : (
-        <div className={viewMode === "grid" ? "max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4" : "w-full flex flex-col gap-2"}>
+        <div className="w-full flex flex-col gap-2">
           {!currentFolderId && folders.map(folder => (
             <div
               key={folder.id}
-              className={`bg-(--card-bg) border border-(--card-border) rounded-[14px] hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors cursor-pointer group flex items-center gap-3 ${
-                viewMode === "grid" ? "p-5 items-start" : "p-3.5"
-              }`}
+              className="bg-(--card-bg) border border-(--card-border) rounded-[14px] hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors cursor-pointer group flex items-center gap-3 p-3.5"
               onClick={() => setCurrentFolderId(folder.id)}
             >
               <div className="h-10 w-10 rounded-[10px] bg-(--card-hover) flex items-center justify-center shrink-0">
@@ -269,12 +242,10 @@ export default function PagesIndex() {
           {visiblePages.map(page => (
             <div
               key={page.id}
-              className={`bg-(--card-bg) border border-(--card-border) rounded-[14px] hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors cursor-pointer group ${
-                viewMode === "grid" ? "p-5 flex flex-col gap-3" : "p-3.5 flex items-center gap-4"
-              }`}
+              className="bg-(--card-bg) border border-(--card-border) rounded-[14px] hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors cursor-pointer group p-3.5 flex items-center gap-4"
               onClick={() => navigate(`/pages/${page.id}`)}
             >
-              <div className={viewMode === "grid" ? "flex items-start justify-between gap-2" : "flex-1 min-w-0 flex items-center gap-3"}>
+              <div className="flex-1 min-w-0 flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-[15px] text-(--text-primary) mb-1" style={{ letterSpacing: '-0.2px' }}>{page.nome}</h3>
                   <p className="text-[13px] text-(--text-tertiary) truncate">/{page.slug}</p>
@@ -290,19 +261,19 @@ export default function PagesIndex() {
                 )}
               </div>
 
-              <p className={`text-[12px] text-(--text-tertiary) shrink-0 ${viewMode === "grid" ? "" : "hidden sm:block"}`}>
+              <p className="text-[12px] text-(--text-tertiary) shrink-0 hidden sm:block">
                 Atualizada {formatDistanceToNow(new Date(page.atualizado_em), { locale: ptBR, addSuffix: true })}
               </p>
 
               <div
-                className={`flex gap-2 ${viewMode === "grid" ? "mt-auto pt-4 border-t border-(--card-border)" : "shrink-0"}`}
+                className="flex gap-2 shrink-0"
                 onClick={e => e.stopPropagation()}
               >
                 <button
-                  className={`h-10 flex items-center justify-center gap-1.5 px-3 rounded-2xl border border-(--card-border) text-[13px] font-medium text-(--text-secondary) bg-transparent hover:bg-(--card-hover) hover:text-(--text-primary) transition-colors cursor-pointer ${viewMode === "grid" ? "flex-1" : ""}`}
+                  className="h-10 flex items-center justify-center gap-1.5 px-3 rounded-2xl border border-(--card-border) text-[13px] font-medium text-(--text-secondary) bg-transparent hover:bg-(--card-hover) hover:text-(--text-primary) transition-colors cursor-pointer"
                   onClick={() => navigate(`/pages/${page.id}`)}
                 >
-                  <Pencil className="w-3.5 h-3.5" /> {viewMode === "grid" && "Editar"}
+                  <Pencil className="w-3.5 h-3.5" />
                 </button>
                 {page.status === "published" && (
                   <a
@@ -356,9 +327,7 @@ export default function PagesIndex() {
 
           <button
             onClick={() => setShowCreateModal(true)}
-            className={`border border-dashed border-(--card-border) bg-(--card-bg) rounded-[14px] flex items-center justify-center gap-2 text-(--text-tertiary) hover:bg-[#FBB03B]/5 hover:border-[#FBB03B]/30 hover:text-[#FBB03B] transition-colors group cursor-pointer ${
-              viewMode === "grid" ? "flex-col p-5 min-h-[120px]" : "p-3.5"
-            }`}
+            className="border border-dashed border-(--card-border) bg-(--card-bg) rounded-[14px] flex items-center justify-center gap-2 text-(--text-tertiary) hover:bg-[#FBB03B]/5 hover:border-[#FBB03B]/30 hover:text-[#FBB03B] transition-colors group cursor-pointer p-3.5"
           >
             <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
             <span className="text-[13px] font-medium">Nova página</span>
