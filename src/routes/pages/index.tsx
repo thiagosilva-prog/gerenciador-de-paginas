@@ -1,11 +1,16 @@
 import * as React from "react";
 import { useNavigate } from "react-router";
-import { Plus, FileText, Folder, FolderOpen, Globe, Trash2, Pencil, ExternalLink, LogOut, MoreVertical, ArrowLeft, FolderInput } from "lucide-react";
+import { useQueries } from "@tanstack/react-query";
+import {
+  Plus, FileText, Folder, FolderOpen, Globe, Trash2, Pencil, ExternalLink, LogOut,
+  MoreVertical, ArrowLeft, FolderInput, Image as ImageIcon, Copy, BarChart2,
+} from "lucide-react";
 import { Skeleton } from "../../components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../components/ui/dialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-  DropdownMenuSeparator,
+  DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "../../components/ui/dropdown-menu";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -16,8 +21,8 @@ import {
   useFolders, useCreateFolder, useRenameFolder, useDeleteFolder, type PageFolder,
 } from "../../hooks/usePages";
 import { useAuth } from "../../hooks/useAuth";
-import { formatDistanceToNowStrict } from "date-fns";
-import { ptBR } from "date-fns/locale";
+
+const PUBLIC_URL = (import.meta.env.VITE_PUBLIC_URL as string | undefined)?.replace(/\/$/, '') || window.location.origin;
 
 export default function PagesIndex() {
   const navigate = useNavigate();
@@ -48,6 +53,24 @@ export default function PagesIndex() {
 
   const currentFolder = currentFolderId ? folders.find(f => f.id === currentFolderId) : undefined;
   const visiblePages = paginas.filter(p => (p.folder_id ?? null) === currentFolderId);
+
+  const reportQueries = useQueries({
+    queries: visiblePages.map(page => ({
+      queryKey: ["pageReportSummary", page.id],
+      queryFn: async () => {
+        const res = await fetch(`/api/reports?page_id=${page.id}&period=all`);
+        if (!res.ok) return { visitas: 0, conversoes: 0 };
+        const data = await res.json();
+        return { visitas: data.visitas as number, conversoes: data.conversoes as number };
+      },
+      staleTime: 60_000,
+    })),
+  });
+
+  const handleCopyUrl = (slug: string) => {
+    navigator.clipboard.writeText(`${PUBLIC_URL}/p/${slug}`);
+    toast.success("Link copiado!");
+  };
 
   const handleNomeChange = (v: string) => {
     setNewPageNome(v);
@@ -239,94 +262,121 @@ export default function PagesIndex() {
             </div>
           ))}
 
-          {visiblePages.map(page => (
-            <div
-              key={page.id}
-              className="bg-(--card-bg) border border-(--card-border) rounded-[14px] hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors cursor-pointer group p-4 flex items-center gap-4"
-              onClick={() => navigate(`/pages/${page.id}`)}
-            >
-              <div className="flex flex-col gap-2 min-w-0">
-                <div className="flex items-baseline gap-2 min-w-0">
-                  <h3 className="font-semibold text-[15px] text-(--text-primary) truncate" style={{ letterSpacing: '-0.2px' }}>{page.nome}</h3>
-                  <p className="text-[13px] text-(--text-tertiary) truncate">/{page.slug}</p>
+          {visiblePages.map((page, i) => {
+            const stats = reportQueries[i]?.data;
+            const publicUrl = `${PUBLIC_URL}/p/${page.slug}`;
+            return (
+              <div
+                key={page.id}
+                className="bg-(--card-bg) border border-(--card-border) rounded-[14px] hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors cursor-pointer group p-4 flex items-center gap-4"
+                onClick={() => navigate(`/pages/${page.id}`)}
+              >
+                <div className="h-14 w-14 rounded-[10px] bg-(--card-hover) border border-(--card-border) flex items-center justify-center shrink-0">
+                  <ImageIcon className="h-5 w-5 text-(--text-tertiary)" />
                 </div>
 
-                <div
-                  className="flex items-center gap-3 shrink-0"
-                  onClick={e => e.stopPropagation()}
-                >
+                <div className="flex flex-col gap-1 min-w-0 flex-1">
+                  <h3 className="font-semibold text-[15px] text-(--text-primary) truncate" style={{ letterSpacing: '-0.2px' }}>{page.nome}</h3>
+                  <div className="flex items-center gap-1.5 min-w-0" onClick={e => e.stopPropagation()}>
+                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${page.status === "published" ? "bg-emerald-500" : "bg-(--text-tertiary)"}`} />
+                    <a
+                      href={publicUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[12px] text-(--text-tertiary) hover:text-(--text-primary) truncate transition-colors"
+                    >
+                      {publicUrl.replace(/^https?:\/\//, '')}
+                    </a>
+                    <button
+                      onClick={() => handleCopyUrl(page.slug)}
+                      title="Copiar link"
+                      className="text-(--text-tertiary) hover:text-(--text-primary) shrink-0 cursor-pointer"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="hidden md:flex items-center gap-6 shrink-0">
+                  <div className="text-center w-16">
+                    <p className="text-[14px] font-semibold text-(--text-primary)">{stats ? stats.visitas : "–"}</p>
+                    <p className="text-[11px] text-(--text-tertiary)">Visitas</p>
+                  </div>
+                  <div className="text-center w-16">
+                    <p className="text-[14px] font-semibold text-(--text-primary)">{stats ? stats.conversoes : "–"}</p>
+                    <p className="text-[11px] text-(--text-tertiary)">Conversões</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                   <button
-                    className="text-[12px] font-semibold px-2.5 py-1 rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
+                    className="text-[12px] font-semibold px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
                     style={{ backgroundColor: '#FBB03B', color: '#1A1A1A' }}
                     onClick={() => navigate(`/pages/${page.id}`)}
                   >
-                    Editar
+                    Editar Design
                   </button>
-                  {page.status === "published" && (
-                    <a
-                      href={`/p/${page.slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[13px] font-medium text-(--text-secondary) underline underline-offset-4 decoration-(--card-border) hover:text-(--text-primary) hover:decoration-(--text-primary) transition-colors cursor-pointer"
-                    >
-                      Abrir
-                    </a>
-                  )}
+                  <button
+                    onClick={() => navigate(`/pages/${page.id}`)}
+                    title="Relatório"
+                    className="h-8 w-8 flex items-center justify-center text-(--text-tertiary) hover:text-(--text-primary) hover:bg-(--card-hover) rounded-lg transition-colors shrink-0 cursor-pointer"
+                  >
+                    <BarChart2 className="w-4 h-4" />
+                  </button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="text-[13px] font-medium text-(--text-secondary) underline underline-offset-4 decoration-(--card-border) hover:text-(--text-primary) hover:decoration-(--text-primary) transition-colors cursor-pointer">
-                        Mover
+                      <button className="h-8 w-8 flex items-center justify-center text-(--text-tertiary) hover:text-(--text-primary) hover:bg-(--card-hover) rounded-lg transition-colors shrink-0 cursor-pointer">
+                        <MoreVertical className="w-4 h-4" />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {folders.length === 0 ? (
-                        <DropdownMenuItem disabled>Nenhuma pasta criada</DropdownMenuItem>
-                      ) : (
-                        folders.map(folder => (
-                          <DropdownMenuItem
-                            key={folder.id}
-                            disabled={page.folder_id === folder.id}
-                            onClick={() => handleMovePage(page, folder.id)}
-                          >
-                            <Folder className="w-3.5 h-3.5 mr-2" /> {folder.nome}
-                          </DropdownMenuItem>
-                        ))
+                      {page.status === "published" && (
+                        <DropdownMenuItem asChild>
+                          <a href={publicUrl} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="w-3.5 h-3.5 mr-2" /> Abrir
+                          </a>
+                        </DropdownMenuItem>
                       )}
-                      {page.folder_id && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleMovePage(page, null)}>
-                            Remover da pasta
-                          </DropdownMenuItem>
-                        </>
-                      )}
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <FolderInput className="w-3.5 h-3.5 mr-2" /> Mover
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent>
+                            {folders.length === 0 ? (
+                              <DropdownMenuItem disabled>Nenhuma pasta criada</DropdownMenuItem>
+                            ) : (
+                              folders.map(folder => (
+                                <DropdownMenuItem
+                                  key={folder.id}
+                                  disabled={page.folder_id === folder.id}
+                                  onClick={() => handleMovePage(page, folder.id)}
+                                >
+                                  <Folder className="w-3.5 h-3.5 mr-2" /> {folder.nome}
+                                </DropdownMenuItem>
+                              ))
+                            )}
+                            {page.folder_id && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleMovePage(page, null)}>
+                                  Remover da pasta
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => handleDelete(page)} className="text-red-500 focus:text-red-500">
+                        <Trash2 className="w-3.5 h-3.5 mr-2" /> Excluir
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <button
-                    className="text-[13px] font-medium text-(--text-tertiary) underline underline-offset-4 decoration-(--card-border) hover:text-red-500 hover:decoration-red-500 transition-colors cursor-pointer"
-                    onClick={() => handleDelete(page)}
-                  >
-                    Excluir
-                  </button>
                 </div>
               </div>
-
-              <div className="hidden sm:flex items-center justify-end gap-3 shrink-0 w-[190px] ml-auto">
-                {page.status === "published" ? (
-                  <span className="shrink-0 w-[72px] text-center text-[12px] font-semibold px-2 py-0.5 rounded-[4px] bg-emerald-500/10 text-emerald-500">
-                    Publicada
-                  </span>
-                ) : (
-                  <span className="shrink-0 w-[72px] text-center text-[12px] font-semibold px-2 py-0.5 rounded-[4px] bg-(--card-hover) text-(--text-tertiary)">
-                    Rascunho
-                  </span>
-                )}
-                <p className="text-[12px] text-(--text-tertiary) text-right flex-1 truncate">
-                  Atualizada há {formatDistanceToNowStrict(new Date(page.atualizado_em), { locale: ptBR })}
-                </p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           <button
             onClick={() => setShowCreateModal(true)}
