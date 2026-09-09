@@ -147,7 +147,7 @@ export default function PagesIndex() {
               <FileText className="w-5 h-5 text-(--text-tertiary)" />
             )}
             <h2 className="text-[22px] font-semibold text-(--text-primary)" style={{ letterSpacing: '-0.374px' }}>
-              {currentFolder ? currentFolder.nome : "Páginas"}
+              {currentFolder ? currentFolder.nome : "Páginas"} ({visiblePages.length})
             </h2>
           </div>
           <p className="text-[13px] text-(--text-secondary) mt-1">
@@ -204,11 +204,11 @@ export default function PagesIndex() {
           </Button>
         </div>
       ) : (
-        <div className="w-full flex flex-col gap-2">
+        <div className="w-full flex flex-col gap-3">
           {!currentFolderId && folders.map(folder => (
             <div
               key={folder.id}
-              className="bg-(--card-bg) border border-(--card-border) rounded-[14px] hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors cursor-pointer group flex items-center gap-3 p-3.5"
+              className="bg-(--card-bg) border border-(--card-border) rounded-[14px] hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors cursor-pointer group flex items-center gap-3 p-4"
               onClick={() => setCurrentFolderId(folder.id)}
             >
               <div className="h-10 w-10 rounded-[10px] bg-(--card-hover) flex items-center justify-center shrink-0">
@@ -242,10 +242,10 @@ export default function PagesIndex() {
           {visiblePages.map(page => (
             <div
               key={page.id}
-              className="bg-(--card-bg) border border-(--card-border) rounded-[14px] hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors cursor-pointer group p-3.5 flex items-center gap-4"
+              className="bg-(--card-bg) border border-(--card-border) rounded-[14px] hover:border-[#FBB03B]/30 hover:bg-[#FBB03B]/5 transition-colors cursor-pointer group p-4 flex items-center gap-4"
               onClick={() => navigate(`/pages/${page.id}`)}
             >
-              <div className="flex flex-col gap-1.5 min-w-0">
+              <div className="flex flex-col gap-2 min-w-0">
                 <div className="flex items-baseline gap-2 min-w-0">
                   <h3 className="font-semibold text-[15px] text-(--text-primary) truncate" style={{ letterSpacing: '-0.2px' }}>{page.nome}</h3>
                   <p className="text-[13px] text-(--text-tertiary) truncate">/{page.slug}</p>
@@ -256,7 +256,8 @@ export default function PagesIndex() {
                   onClick={e => e.stopPropagation()}
                 >
                   <button
-                    className="text-[13px] font-medium text-(--text-secondary) underline underline-offset-4 decoration-(--card-border) hover:text-(--text-primary) hover:decoration-(--text-primary) transition-colors cursor-pointer"
+                    className="text-[12px] font-semibold px-2.5 py-1 rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
+                    style={{ backgroundColor: '#FBB03B', color: '#1A1A1A' }}
                     onClick={() => navigate(`/pages/${page.id}`)}
                   >
                     Editar
