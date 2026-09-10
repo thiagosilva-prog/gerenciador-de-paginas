@@ -5,7 +5,7 @@ import {
   MoreHorizontal, Trash2, BarChart2, FileText, Users,
   MapPin, Link2, Tag, ChevronDown, Eye, EyeOff, Puzzle, Code, Plus, X,
   ShieldCheck, Search, Sparkles, AlertCircle, CheckCircle2, Info,
-  TrendingUp, TrendingDown, Settings, SquarePen, Share2, Zap, Lock, Mail
+  TrendingUp, TrendingDown, Settings, SquarePen, Share2, Zap, Lock, Mail, FlaskConical
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Skeleton } from "../../components/ui/skeleton";
@@ -37,6 +37,7 @@ import { injectIntegrationScripts } from "../../lib/integrations";
 import { useLeads, useDeleteLead, type Lead } from "../../hooks/useLeads";
 import { useReport } from "../../hooks/useReport";
 import { useDomains, useCreateDomain, useDeleteDomain, type Domain } from "../../hooks/useDomains";
+import { useExperimentForPage, useCreateExperiment } from "../../hooks/useExperiments";
 import { cn } from "../../lib/utils";
 import { Safari } from "../../components/ui/safari";
 
@@ -96,6 +97,27 @@ export default function PageDetail() {
   const { data: leads = [], isLoading: leadsLoading } = useLeads(id, period);
   const { data: report, isLoading: reportLoading } = useReport(id, period);
   const { data: summaryReport } = useReport(id, "7d");
+  const { data: experiment } = useExperimentForPage(id);
+  const createExperiment = useCreateExperiment();
+  const [showCreateTest, setShowCreateTest] = React.useState(false);
+  const [testName, setTestName] = React.useState("");
+
+  const handleTesteAB = () => {
+    if (experiment) {
+      navigate(`/pages/${id}/teste-ab`);
+    } else {
+      setTestName(`Teste ${page?.nome ?? ""}`.trim());
+      setShowCreateTest(true);
+    }
+  };
+
+  const handleCreateTest = () => {
+    if (!id || !testName.trim()) return;
+    createExperiment.mutate(
+      { nome: testName.trim(), pageId: id },
+      { onSuccess: () => { setShowCreateTest(false); navigate(`/pages/${id}/teste-ab`); } }
+    );
+  };
   const deleteLead = useDeleteLead();
   const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null);
   const [deleteLeadId, setDeleteLeadId] = React.useState<string | null>(null);
@@ -514,6 +536,9 @@ export default function PageDetail() {
                 <ExternalLink className="w-4 h-4" />
               </a>
             )}
+            <button onClick={handleTesteAB} title="Teste A/B" className="p-2 hover:bg-(--card-hover) text-(--text-tertiary) hover:text-(--text-primary) rounded-2xl transition-colors">
+              <FlaskConical className="w-4 h-4" />
+            </button>
           </div>
 
           {page.status === "published" ? (
@@ -1563,6 +1588,22 @@ export default function PageDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog criar Teste A/B */}
+      <Dialog open={showCreateTest} onOpenChange={setShowCreateTest}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Criar Teste A/B</DialogTitle>
+          </DialogHeader>
+          <Input value={testName} onChange={(e) => setTestName(e.target.value)} placeholder="Nome do teste" />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateTest(false)}>Cancelar</Button>
+            <Button onClick={handleCreateTest} disabled={!testName.trim() || createExperiment.isPending}>
+              {createExperiment.isPending ? "Criando..." : "Criar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog renomear página */}
       <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
