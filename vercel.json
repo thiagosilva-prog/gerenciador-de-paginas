@@ -6,6 +6,7 @@
   },
   "rewrites": [
     { "source": "/p/:slug", "destination": "/api/render-page?slug=:slug" },
+    { "source": "/t/:slug", "destination": "/api/render-page?experimentSlug=:slug" },
     { "source": "/((?!api/|@vite|@react-refresh|@fs|@id|src/|node_modules/).*)", "destination": "/index.html" }
   ]
 }
