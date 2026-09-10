@@ -42,9 +42,8 @@ export function useCreateExperiment() {
   return useMutation({
     mutationFn: (input: { nome: string; pageId: string }) =>
       apiFetch<Experiment>('/api/experiments/create', { method: 'POST', body: JSON.stringify(input) }),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['experiment', variables.pageId] })
-    },
+    onSuccess: (_data, variables) =>
+      queryClient.invalidateQueries({ queryKey: ['experiment', variables.pageId] }),
   })
 }
 

@@ -17,7 +17,14 @@ function parseCookies(req: VercelRequest): Record<string, string> {
   return Object.fromEntries(
     header.split(';').map((pair) => {
       const idx = pair.indexOf('=')
-      return [pair.slice(0, idx).trim(), decodeURIComponent(pair.slice(idx + 1).trim())]
+      const raw = pair.slice(idx + 1).trim()
+      let value = raw
+      try {
+        value = decodeURIComponent(raw)
+      } catch {
+        // malformed percent-encoding in a third-party cookie — fall back to the raw value
+      }
+      return [pair.slice(0, idx).trim(), value]
     })
   )
 }
@@ -33,7 +40,7 @@ async function handleExperiment(req: VercelRequest, res: VercelResponse, experim
     SELECT p.id, p.nome, p.html, p.page_data
     FROM experiment_variants ev
     JOIN pages p ON p.id = ev.page_id
-    WHERE ev.experiment_id = ${experiment.id}
+    WHERE ev.experiment_id = ${experiment.id} AND p.status = 'published'
   `
   const variants = variantRows as PageRow[]
   if (variants.length === 0) return sendNotFound(res)

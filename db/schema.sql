@@ -89,3 +89,21 @@ create table if not exists page_folders (
 
 alter table pages add column if not exists folder_id uuid references page_folders(id) on delete set null;
 create index if not exists idx_pages_folder_id on pages(folder_id);
+
+create table if not exists experiments (
+  id uuid primary key default gen_random_uuid(),
+  nome text not null,
+  slug text not null unique,
+  status text not null default 'running',
+  criado_em timestamptz not null default now()
+);
+
+create table if not exists experiment_variants (
+  id uuid primary key default gen_random_uuid(),
+  experiment_id uuid not null references experiments(id) on delete cascade,
+  page_id uuid not null references pages(id) on delete cascade,
+  criado_em timestamptz not null default now(),
+  unique (experiment_id, page_id)
+);
+
+create index if not exists experiment_variants_experiment_id_idx on experiment_variants(experiment_id);

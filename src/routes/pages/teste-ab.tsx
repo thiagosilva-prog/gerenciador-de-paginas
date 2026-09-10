@@ -28,7 +28,7 @@ export default function PagesTesteAB() {
 
   const testUrl = `${PUBLIC_URL}/t/${experiment.slug}`;
   const variantPageIds = new Set(experiment.variants.map((v) => v.page_id));
-  const candidatePages = allPages.filter((p) => !variantPageIds.has(p.id));
+  const candidatePages = allPages.filter((p) => !variantPageIds.has(p.id) && p.status === 'published');
   const exhibicaoPct = experiment.variants.length ? (100 / experiment.variants.length).toFixed(1) : "0";
 
   return (
