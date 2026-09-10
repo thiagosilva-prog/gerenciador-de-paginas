@@ -24,7 +24,7 @@ async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
 export function useDomains() {
   return useQuery({
     queryKey: ['domains'],
-    queryFn: () => apiFetch<Domain[]>('/api/domains'),
+    queryFn: () => apiFetch<Domain[]>('/api/domains/list'),
   })
 }
 
@@ -32,7 +32,7 @@ export function useCreateDomain() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (domain: string) =>
-      apiFetch<Domain>('/api/domains', { method: 'POST', body: JSON.stringify({ domain }) }),
+      apiFetch<Domain>('/api/domains/create', { method: 'POST', body: JSON.stringify({ domain }) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['domains'] }),
   })
 }
@@ -40,7 +40,8 @@ export function useCreateDomain() {
 export function useDeleteDomain() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => apiFetch<void>(`/api/domains/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: string) =>
+      apiFetch<void>('/api/domains/delete', { method: 'POST', body: JSON.stringify({ id }) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['domains'] }),
   })
 }
