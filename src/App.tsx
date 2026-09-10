@@ -9,6 +9,7 @@ import Layout from "./routes/Layout";
 import PagesIndex from "./routes/pages/index";
 import PagesDetail from "./routes/pages/detail";
 import PagesEditor from "./routes/pages/editor";
+import PagesTesteAB from "./routes/pages/teste-ab";
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
             <Route element={<Layout />}>
               <Route path="/pages" element={<PagesIndex />} />
               <Route path="/pages/:id" element={<PagesDetail />} />
+              <Route path="/pages/:id/teste-ab" element={<PagesTesteAB />} />
             </Route>
           </Route>
         </Routes>
