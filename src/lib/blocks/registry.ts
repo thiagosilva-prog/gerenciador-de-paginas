@@ -345,6 +345,7 @@ export const blockRegistry: BlockDefinition[] = [
               if(btn){btn.disabled=true;btn.textContent='Enviando...';}
               var body={};
               new FormData(form).forEach(function(v,k){body[k]=v;});
+              if(window.KV_EXPERIMENT_ID){body.experiment_id=window.KV_EXPERIMENT_ID;}
               fetch('/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
                 .then(function(r){
                   if(!r.ok)throw new Error();
@@ -412,6 +413,7 @@ export const blockRegistry: BlockDefinition[] = [
               if(btn){btn.disabled=true;btn.textContent='Enviando...';}
               var body={};
               new FormData(form).forEach(function(v,k){body[k]=v;});
+              if(window.KV_EXPERIMENT_ID){body.experiment_id=window.KV_EXPERIMENT_ID;}
               fetch('/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
                 .then(function(r){
                   if(!r.ok)throw new Error();
@@ -661,6 +663,7 @@ export const blockRegistry: BlockDefinition[] = [
             btn.disabled=true;btn.textContent='Enviando...';
             var body={};
             new FormData(e.target).forEach(function(v,k){body[k]=v;});
+            if(window.KV_EXPERIMENT_ID){body.experiment_id=window.KV_EXPERIMENT_ID;}
             fetch('/api/leads',{
               method:'POST',
               headers:{'Content-Type':'application/json'},

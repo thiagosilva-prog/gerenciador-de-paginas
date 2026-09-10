@@ -120,12 +120,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         INSERT INTO leads (
           page_id, nome, email, telefone,
           utm_source, utm_medium, utm_campaign, utm_term, utm_content,
-          pais, cidade, estado, ip, user_agent, referrer
+          pais, cidade, estado, ip, user_agent, referrer, experiment_id
         ) VALUES (
           ${page_id}, ${body.nome || null}, ${body.email || null}, ${body.telefone || null},
           ${body.utm_source || null}, ${body.utm_medium || null}, ${body.utm_campaign || null},
           ${body.utm_term || null}, ${body.utm_content || null},
-          ${pais}, ${cidade}, ${estado}, ${ip}, ${user_agent}, ${referrer}
+          ${pais}, ${cidade}, ${estado}, ${ip}, ${user_agent}, ${referrer}, ${body.experiment_id || null}
         )
         RETURNING *
       `

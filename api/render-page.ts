@@ -5,10 +5,10 @@ import type { PageBlock } from '../src/lib/blocks/types.js'
 
 type PageRow = { id: string; nome: string; html: string | null; page_data: { blocks?: PageBlock[] } }
 
-async function insertView(pageId: string, req: VercelRequest) {
+async function insertView(pageId: string, req: VercelRequest, experimentId?: string) {
   const forwardedFor = req.headers['x-forwarded-for']
   const ip = typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : req.socket.remoteAddress
-  await sql`INSERT INTO page_views (page_id, ip) VALUES (${pageId}, ${ip})`
+  await sql`INSERT INTO page_views (page_id, ip, experiment_id) VALUES (${pageId}, ${ip}, ${experimentId ?? null})`
 }
 
 function parseCookies(req: VercelRequest): Record<string, string> {
@@ -55,8 +55,8 @@ async function handleExperiment(req: VercelRequest, res: VercelResponse, experim
     res.setHeader('Set-Cookie', `${cookieName}=${page.id}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`)
   }
 
-  await insertView(page.id, req)
-  return renderPageResponse(res, page, { cacheControl: 'private, no-store' })
+  await insertView(page.id, req, experiment.id)
+  return renderPageResponse(res, page, { cacheControl: 'private, no-store', experimentId: experiment.id })
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

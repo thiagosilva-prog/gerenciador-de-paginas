@@ -21,10 +21,10 @@ async function uniqueSlug(base: string): Promise<string> {
   }
 }
 
-async function statsFor(pageId: string) {
+async function statsFor(pageId: string, experimentId: string) {
   const [visitas, conversoes] = await Promise.all([
-    sql`SELECT count(*)::int AS n FROM page_views WHERE page_id = ${pageId}`,
-    sql`SELECT count(*)::int AS n FROM leads WHERE page_id = ${pageId}`,
+    sql`SELECT count(*)::int AS n FROM page_views WHERE page_id = ${pageId} AND experiment_id = ${experimentId}`,
+    sql`SELECT count(*)::int AS n FROM leads WHERE page_id = ${pageId} AND experiment_id = ${experimentId}`,
   ])
   return { visitas: visitas.rows[0].n as number, conversoes: conversoes.rows[0].n as number }
 }
@@ -66,7 +66,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         WHERE ev.experiment_id = ${experiment.id}
       `
       const variants = await Promise.all(
-        variantRows.map(async (v) => ({ id: v.page_id, page_id: v.page_id, nome: v.nome, slug: v.slug, ...(await statsFor(v.page_id)) }))
+        variantRows.map(async (v) => ({ id: v.page_id, page_id: v.page_id, nome: v.nome, slug: v.slug, ...(await statsFor(v.page_id, experiment.id)) }))
       )
       return res.status(200).json({ ...experiment, variants })
     }

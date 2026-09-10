@@ -107,3 +107,6 @@ create table if not exists experiment_variants (
 );
 
 create index if not exists experiment_variants_experiment_id_idx on experiment_variants(experiment_id);
+
+alter table page_views add column if not exists experiment_id uuid references experiments(id) on delete set null;
+alter table leads add column if not exists experiment_id uuid references experiments(id) on delete set null;
