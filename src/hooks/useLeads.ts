@@ -52,7 +52,7 @@ export function useLeads(pageId: string | undefined, period?: string) {
 export function useDeleteLead() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (leadId: string) => apiFetch<void>(`/api/leads/${leadId}`, { method: "DELETE" }),
+    mutationFn: (leadId: string) => apiFetch<void>(`/api/leads?id=${leadId}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
