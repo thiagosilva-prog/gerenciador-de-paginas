@@ -84,7 +84,104 @@ export const blockRegistry: BlockDefinition[] = [
       </section>
     `
   },
-  
+  {
+    type: 'header_3',
+    category: 'Headers',
+    name: 'Header Vídeo Cinematográfico',
+    thumbnail: `<svg viewBox="0 0 280 180" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="280" height="180" fill="#0f172a" /><rect x="90" y="14" width="100" height="16" rx="8" fill="#1e293b" /><rect x="30" y="90" width="150" height="28" rx="4" fill="#E1E0CC" /><rect x="30" y="128" width="100" height="8" rx="4" fill="#64748b" /><circle cx="250" cy="150" r="14" fill="#E1E0CC" /></svg>`,
+    fields: [
+      { key: 'video_url', label: 'Vídeo de fundo (URL .mp4)', type: 'url' },
+      { key: 'poster_url', label: 'Imagem de capa (enquanto o vídeo carrega)', type: 'image' },
+      {
+        key: 'nav_items', label: 'Itens do menu', type: 'array',
+        subFields: [
+          { key: 'label', label: 'Texto', type: 'text' },
+          { key: 'link', label: 'Link', type: 'url' },
+        ]
+      },
+      { key: 'headline', label: 'Título grande', type: 'text' },
+      { key: 'mostrar_asterisco', label: 'Mostrar asterisco no título', type: 'boolean' },
+      { key: 'subheadline', label: 'Texto de apoio', type: 'textarea' },
+      { key: 'cta_texto', label: 'Texto do botão', type: 'text' },
+      { key: 'cta_link', label: 'Link do botão', type: 'url' },
+      { key: 'cor_texto', label: 'Cor do texto/detalhes', type: 'color' },
+    ],
+    defaultData: {
+      video_url: '',
+      poster_url: '',
+      nav_items: [
+        { label: 'Sobre', link: '#' },
+        { label: 'Serviços', link: '#' },
+        { label: 'Diferenciais', link: '#' },
+        { label: 'Contato', link: '#' },
+      ],
+      headline: 'Prisma',
+      mostrar_asterisco: false,
+      subheadline: 'Uma frase curta que resume a proposta de valor, exibida ao lado do título em destaque.',
+      cta_texto: 'Fale conosco',
+      cta_link: '#',
+      cor_texto: '#E1E0CC',
+    },
+    defaultSectionStyles: { backgroundColor: '#0f172a', paddingTop: 0, paddingBottom: 0 },
+    render: (data, styles) => {
+      const corTexto = data.cor_texto || '#E1E0CC';
+      const words = String(data.headline || '').split(' ').filter(Boolean);
+      const headlineHtml = words.map((w: string, i: number) => {
+        const isLast = i === words.length - 1;
+        const asterisco = isLast && data.mostrar_asterisco
+          ? `<span style="position:absolute; top:0.08em; right:-0.4em; font-size:0.32em;">*</span>`
+          : '';
+        return `<span style="display:inline-block; position:relative; opacity:0; margin-right:${isLast ? 0 : '0.22em'}; animation: kvHeaderPullUp 0.7s cubic-bezier(0.16,1,0.3,1) ${(0.15 + i * 0.08).toFixed(2)}s forwards;">${w}${asterisco}</span>`;
+      }).join('');
+      const navHtml = (data.nav_items || []).map((item: any) => `
+        <a href="${item.link || '#'}" style="color: ${corTexto}; opacity: 0.8; text-decoration: none; font-size: 13px; white-space: nowrap; font-weight: 500;">${item.label || ''}</a>
+      `).join('');
+      const wordDelayEnd = 0.15 + words.length * 0.08;
+
+      return `
+      <section style="position: relative; background-color: ${styles.backgroundColor || '#0f172a'}; min-height: 90vh; overflow: hidden;">
+        <style>
+          @keyframes kvHeaderPullUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+          @keyframes kvHeaderFadeUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        </style>
+
+        ${data.video_url ? `
+          <video autoplay loop muted playsinline ${data.poster_url ? `poster="${data.poster_url}"` : ''} style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;">
+            <source src="${data.video_url}" type="video/mp4" />
+          </video>
+        ` : (data.poster_url ? `<img src="${data.poster_url}" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;" />` : '')}
+
+        <div style="position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.35), rgba(0,0,0,0.15) 40%, rgba(0,0,0,0.7));"></div>
+
+        <nav style="position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 20;">
+          <div style="display: flex; align-items: center; gap: 24px; background: rgba(0,0,0,0.55); backdrop-filter: blur(6px); padding: 10px 28px; border-radius: 0 0 20px 20px; flex-wrap: wrap; justify-content: center;">
+            ${navHtml}
+          </div>
+        </nav>
+
+        <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 24px 24px 40px; z-index: 10;">
+          <div style="max-width: 1280px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 32px;">
+            <div style="flex: 3; min-width: 280px;">
+              <h1 style="font-weight: 600; line-height: 0.9; letter-spacing: -0.03em; font-size: clamp(48px, 12vw, 160px); color: ${corTexto}; margin: 0;">${headlineHtml}</h1>
+            </div>
+            <div style="flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 18px; padding-bottom: 12px;">
+              <p style="font-size: 15px; line-height: 1.5; color: ${corTexto}; opacity: 0; margin: 0; animation: kvHeaderFadeUp 0.8s cubic-bezier(0.16,1,0.3,1) ${(wordDelayEnd + 0.15).toFixed(2)}s forwards;">${data.subheadline || ''}</p>
+              ${data.cta_texto ? `
+                <a href="${data.cta_link || '#'}" style="opacity: 0; align-self: flex-start; display: inline-flex; align-items: center; gap: 10px; background: ${corTexto}; color: #0f172a; padding: 6px 6px 6px 22px; border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 15px; animation: kvHeaderFadeUp 0.8s cubic-bezier(0.16,1,0.3,1) ${(wordDelayEnd + 0.3).toFixed(2)}s forwards;">
+                  ${data.cta_texto}
+                  <span style="display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 999px; background: #0f172a;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${corTexto}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                  </span>
+                </a>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+    }
+  },
+
   // Benefícios
   {
     type: 'benefits_1',
