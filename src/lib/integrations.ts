@@ -99,7 +99,7 @@ export function injectIntegrationScripts(html: string, integrations: PageIntegra
 
   let finalHtml = html
   if (!finalHtml.includes('<head>')) {
-    finalHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><script src="https://cdn.tailwindcss.com"></script></head><body style="margin:0;padding:0;">\n${finalHtml}\n</body></html>`
+    finalHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><style>body{margin:0;padding:0}</style><script src="https://cdn.tailwindcss.com"></script></head><body>\n${finalHtml}\n</body></html>`
   }
 
   if (headScripts) {

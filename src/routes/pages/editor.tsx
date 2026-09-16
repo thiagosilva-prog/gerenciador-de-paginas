@@ -369,7 +369,7 @@ export default function PagesEditor() {
         return def ? def.render(b.data, b.sectionStyles).replace(/\{\{PAGE_ID\}\}/g, id || '') : ''
       })
       .join('\n')
-    const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><script src="https://cdn.tailwindcss.com"></script></head><body style="margin:0;padding:0;">${renderedHtml}</body></html>`
+    const fullHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><style>body{margin:0;padding:0}</style><script src="https://cdn.tailwindcss.com"></script></head><body>${renderedHtml}</body></html>`
     const blob = new Blob([fullHtml], { type: 'text/html' })
     const url = URL.createObjectURL(blob)
     window.open(url, '_blank')
