@@ -23,7 +23,7 @@ function renderFromBlocks(pageId: string, nome: string, blocks: PageBlock[]): st
       return def.render(b.data, b.sectionStyles).replace(/\{\{PAGE_ID\}\}/g, pageId)
     })
     .join('\n')
-  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>${nome || 'Página'}</title><script src="https://cdn.tailwindcss.com"></script></head><body style="margin:0;padding:0;">${body}</body></html>`
+  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>${nome || 'Página'}</title><style>body{margin:0;padding:0}</style><script src="https://cdn.tailwindcss.com"></script></head><body>${body}</body></html>`
 }
 
 export function renderPageResponse(
