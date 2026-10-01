@@ -383,6 +383,7 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
     tag: string
     isShape: boolean
     isImage: boolean
+    isLocked: boolean
   } | null>(null)
 
   // Estilos vivos do elemento selecionado
@@ -498,25 +499,49 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
     const SHAPE_TAGS = ['BUTTON', 'A']
     const EDITABLE_TAGS = ['P','H1','H2','H3','H4','H5','H6','SPAN','A','LI','BUTTON','LABEL','TD','TH','IMG']
 
+    // Gera um seletor único (:nth-child por nível) para um nó até <body>.
+    const buildSelector = (node: HTMLElement): string => {
+      const path: string[] = []
+      let n: HTMLElement | null = node
+      while (n && n !== doc.body) {
+        const idx = Array.from(n.parentElement?.children || []).indexOf(n)
+        path.unshift(`${n.tagName.toLowerCase()}:nth-child(${idx + 1})`)
+        n = n.parentElement
+      }
+      return path.join(' > ')
+    }
+
     const handleClick = (e: MouseEvent) => {
       const el = e.target as HTMLElement
       if (!el || el === doc.body || el === doc.documentElement) return
+
+      // Elemento travado (ou dentro de um travado): só mostra a opção de destravar.
+      const lockedAncestor = el.closest('[data-kv-locked="true"]') as HTMLElement | null
+      if (lockedAncestor) {
+        e.preventDefault()
+        e.stopPropagation()
+        setLiveStyles({})
+        setSelectedElement({ selector: buildSelector(lockedAncestor), tag: lockedAncestor.tagName.toLowerCase(), isShape: false, isImage: false, isLocked: true })
+        return
+      }
+
       if (!EDITABLE_TAGS.includes(el.tagName.toUpperCase())) return
 
       e.preventDefault()
       e.stopPropagation()
 
-      // Gera seletor único
-      const path: string[] = []
-      let node: HTMLElement | null = el
-      while (node && node !== doc.body) {
-        const idx = Array.from(node.parentElement?.children || []).indexOf(node)
-        path.unshift(`${node.tagName.toLowerCase()}:nth-child(${idx + 1})`)
-        node = node.parentElement
-      }
-      const selector = path.join(' > ')
+      const selector = buildSelector(el)
       const isShape = SHAPE_TAGS.includes(el.tagName.toUpperCase())
       const isImage = el.tagName.toUpperCase() === 'IMG'
+
+      // Edição de texto direto na pré-visualização (não se aplica a imagens).
+      // Some sozinho ao perder o foco — só fica marcado "editável" enquanto
+      // selecionado, nunca é salvo assim (applyAndSave remove antes de persistir).
+      if (!isImage) {
+        el.setAttribute('contenteditable', 'true')
+        el.focus()
+        el.addEventListener('blur', () => { el.removeAttribute('contenteditable') }, { once: true })
+      }
 
       // Lê estilos atuais do elemento (computados + inline)
       const cs = window.getComputedStyle
@@ -550,7 +575,7 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
       const href = el.tagName === 'A' ? (el as HTMLAnchorElement).getAttribute('href') || '' : ''
       setLiveStyles((prev: any) => ({ ...prev, href }))
 
-      setSelectedElement({ selector, tag: el.tagName.toLowerCase(), isShape, isImage })
+      setSelectedElement({ selector, tag: el.tagName.toLowerCase(), isShape, isImage, isLocked: false })
     }
 
     doc.addEventListener('click', handleClick)
@@ -560,6 +585,12 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
   const applyAndSave = React.useCallback(() => {
     const doc = iframeRef.current?.contentDocument
     if (!doc) return
+
+    // Remove o contenteditable (ligado ao clicar num elemento de texto) antes de
+    // salvar — é só uma conveniência do editor, nunca deve ir pro HTML publicado.
+    try {
+      doc.querySelectorAll('[contenteditable]').forEach((el: Element) => el.removeAttribute('contenteditable'))
+    } catch {}
 
     // Garante target="_blank" em todos os <a> com href definido
     try {
@@ -600,6 +631,21 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
     applyAndSave()
   }, [selectedElement, applyAndSave])
 
+  // Trava/destrava o elemento selecionado. Um elemento travado fica marcado no
+  // próprio HTML (sobrevive a salvar/recarregar) e, ao ser clicado, mostra só a
+  // opção de destravar — sem controles de estilo, sem duplicar/excluir.
+  const toggleLock = React.useCallback(() => {
+    const doc = iframeRef.current?.contentDocument
+    if (!doc || !selectedElement) return
+    try {
+      const el = doc.querySelector(selectedElement.selector) as HTMLElement | null
+      if (!el) return
+      if (el.hasAttribute('data-kv-locked')) el.removeAttribute('data-kv-locked')
+      else el.setAttribute('data-kv-locked', 'true')
+    } catch {}
+    applyAndSave()
+  }, [selectedElement, applyAndSave])
+
   const handleImageFile = React.useCallback((file: File) => {
     const reader = new FileReader()
     reader.onload = () => {
@@ -636,17 +682,32 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
               &lt;{selectedElement.tag}&gt;
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <button onClick={duplicateElement} title="Duplicar elemento"
-                style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '11px', fontWeight: 600, padding: 0 }}>Duplicar</button>
-              <button onClick={deleteElement} title="Excluir elemento"
-                style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '11px', fontWeight: 600, padding: 0 }}>Excluir</button>
+              {selectedElement.isLocked ? (
+                <button onClick={toggleLock} title="Destravar elemento"
+                  style={{ background: 'transparent', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '11px', fontWeight: 600, padding: 0 }}>Destravar</button>
+              ) : (
+                <>
+                  <button onClick={toggleLock} title="Travar elemento"
+                    style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '11px', fontWeight: 600, padding: 0 }}>Travar</button>
+                  <button onClick={duplicateElement} title="Duplicar elemento"
+                    style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '11px', fontWeight: 600, padding: 0 }}>Duplicar</button>
+                  <button onClick={deleteElement} title="Excluir elemento"
+                    style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '11px', fontWeight: 600, padding: 0 }}>Excluir</button>
+                </>
+              )}
               <button onClick={() => setSelectedElement(null)}
                 style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '16px', padding: 0, lineHeight: 1 }}>✕</button>
             </div>
           </div>
 
+          {selectedElement.isLocked && (
+            <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+              Elemento travado — destrave para editar texto, estilo ou excluir.
+            </p>
+          )}
+
           {/* ── CONTROLES DE TEXTO (não se aplica a imagens) ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {!selectedElement.isLocked && <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {!selectedElement.isImage && <>
             {/* Fonte */}
             <div>
@@ -864,7 +925,7 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
               style={{ width: '100%', background: '#eab308', color: '#000', border: 'none', borderRadius: '8px', padding: '10px', fontWeight: 700, cursor: 'pointer', fontSize: '13px', marginTop: '4px' }}>
               ✓ Salvar alterações
             </button>
-          </div>
+          </div>}
         </div>,
         document.body
       )}
