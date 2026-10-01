@@ -540,7 +540,27 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
       if (!isImage) {
         el.setAttribute('contenteditable', 'true')
         el.focus()
-        el.addEventListener('blur', () => { el.removeAttribute('contenteditable') }, { once: true })
+
+        // Colar texto normal continua texto — mas se o que foi colado parece
+        // código (começa com "<", ex: um ícone SVG), insere como elemento de
+        // verdade em vez de aparecer como texto cru ou sumir.
+        const handlePaste = (ev: ClipboardEvent) => {
+          ev.preventDefault()
+          const html = ev.clipboardData?.getData('text/html') || ''
+          const text = ev.clipboardData?.getData('text/plain') || ''
+          const looksLikeMarkup = /^\s*</.test(html || text)
+          const markup = html || (looksLikeMarkup ? text : '')
+          if (looksLikeMarkup && markup) {
+            doc.execCommand('insertHTML', false, markup)
+          } else {
+            doc.execCommand('insertText', false, text)
+          }
+        }
+        el.addEventListener('paste', handlePaste)
+        el.addEventListener('blur', () => {
+          el.removeAttribute('contenteditable')
+          el.removeEventListener('paste', handlePaste)
+        }, { once: true })
       }
 
       // Lê estilos atuais do elemento (computados + inline)
