@@ -126,6 +126,14 @@ export default function PageDetail() {
   const createDomain = useCreateDomain()
   const deleteDomain = useDeleteDomain()
 
+  // URL pública real da página: domínio personalizado + page_slug quando
+  // configurados e salvos, senão o domínio padrão + slug normal. Sempre com
+  // o prefixo /p/ — é a mesma rota que já serve as páginas hoje.
+  const activePageDomain = page?.domain_id ? domains.find(d => d.id === page.domain_id) : undefined
+  const publicPageHost = activePageDomain && page?.page_slug ? `https://${activePageDomain.domain}` : PUBLIC_URL
+  const publicPageSlug = activePageDomain && page?.page_slug ? page.page_slug : page?.slug
+  const publicPageUrl = `${publicPageHost}/p/${publicPageSlug}`
+
   // Domínio
   const [selectedDomainId, setSelectedDomainId] = React.useState<string>(page?.domain_id || '')
   const [pageSlug, setPageSlug] = React.useState<string>(page?.page_slug || '')
@@ -228,8 +236,8 @@ export default function PageDetail() {
 
   const getPublicUrl = () => {
     if (!selectedDomain) return null
-    const slug = pageSlug.replace(/^\//, '')
-    return `https://${selectedDomain.domain}${slug ? '/' + slug : ''}`
+    const slug = pageSlug.replace(/^\//, '') || page?.slug || ''
+    return `https://${selectedDomain.domain}/p/${slug}`
   }
 
   const hasSeo = !!(seo.title && seo.description)
@@ -343,7 +351,7 @@ export default function PageDetail() {
 
   const handleCopyLink = () => {
     if (!page) return;
-    navigator.clipboard.writeText(`${PUBLIC_URL}/p/${page.slug}`);
+    navigator.clipboard.writeText(publicPageUrl);
     toast.success("Link copiado!");
   };
 
@@ -526,13 +534,13 @@ export default function PageDetail() {
           <div className="flex items-center gap-2">
             <span className={cn("w-2 h-2 rounded-full flex-shrink-0", page.status === "published" ? "bg-emerald-500" : "bg-muted-foreground")} />
             <code className="flex-1 text-[13px] text-(--text-secondary) truncate">
-              {PUBLIC_URL}/p/{page.slug}
+              {publicPageUrl}
             </code>
             <button onClick={handleCopyLink} className="p-2 hover:bg-(--card-hover) text-(--text-tertiary) hover:text-(--text-primary) rounded-2xl transition-colors">
               <Copy className="w-4 h-4" />
             </button>
             {page.status === "published" && (
-              <a href={`/p/${page.slug}`} target="_blank" rel="noopener noreferrer" className="p-2 hover:bg-(--card-hover) text-(--text-tertiary) hover:text-(--text-primary) rounded-2xl transition-colors">
+              <a href={publicPageUrl} target="_blank" rel="noopener noreferrer" className="p-2 hover:bg-(--card-hover) text-(--text-tertiary) hover:text-(--text-primary) rounded-2xl transition-colors">
                 <ExternalLink className="w-4 h-4" />
               </a>
             )}
@@ -542,9 +550,9 @@ export default function PageDetail() {
           </div>
 
           {page.status === "published" ? (
-            <Safari url={`${PUBLIC_URL.replace(/^https?:\/\//, "")}/p/${page.slug}`}>
+            <Safari url={publicPageUrl.replace(/^https?:\/\//, "")}>
               <iframe
-                src={`${PUBLIC_URL}/p/${page.slug}`}
+                src={publicPageUrl}
                 title="Pré-visualização da página"
                 className="w-full h-full bg-white border-0"
               />
@@ -1240,7 +1248,7 @@ export default function PageDetail() {
                   Link da página <span className="text-gray-400 font-normal">(Opcional)</span>
                 </label>
                 <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden bg-white focus-within:border-[#FBB03B] transition-colors">
-                  <span className="px-3 text-[13px] text-gray-400 border-r border-gray-200 py-3 bg-gray-50">/</span>
+                  <span className="px-3 text-[13px] text-gray-400 border-r border-gray-200 py-3 bg-gray-50">/p/</span>
                   <input
                     value={pageSlug}
                     onChange={e => setPageSlug(e.target.value.replace(/[^a-z0-9-]/g, '-').toLowerCase())}
