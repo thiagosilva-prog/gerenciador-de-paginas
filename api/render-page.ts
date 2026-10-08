@@ -72,18 +72,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!slug) return sendNotFound(res)
 
-    // Além do slug padrão (qualquer domínio), também aceita o "link da
-    // página" (page_slug) quando a requisição chegou pelo domínio
-    // personalizado vinculado àquela página especificamente.
+    // Se a requisição chegou por um domínio personalizado cadastrado, busca
+    // SÓ pelo "link da página" (page_slug) daquele domínio — nunca mistura
+    // com o slug padrão, pra não arriscar bater por coincidência numa
+    // página completamente diferente que tenha esse mesmo slug.
     const host = (req.headers.host || '').split(':')[0]
-    const { rows } = await sql`
-      SELECT p.id, p.nome, p.html, p.page_data
-      FROM pages p
-      LEFT JOIN domains d ON d.id = p.domain_id
-      WHERE p.status = 'published'
-        AND (p.slug = ${slug} OR (p.page_slug = ${slug} AND d.domain = ${host}))
-      LIMIT 1
-    `
+    const { rows: domainRows } = await sql`SELECT id FROM domains WHERE domain = ${host}`
+    const domain = domainRows[0] as { id: string } | undefined
+
+    const { rows } = domain
+      ? await sql`
+          SELECT id, nome, html, page_data FROM pages
+          WHERE status = 'published' AND domain_id = ${domain.id} AND page_slug = ${slug}
+        `
+      : await sql`
+          SELECT id, nome, html, page_data FROM pages
+          WHERE status = 'published' AND slug = ${slug}
+        `
     const page = rows[0] as PageRow | undefined
     if (!page) return sendNotFound(res)
 
