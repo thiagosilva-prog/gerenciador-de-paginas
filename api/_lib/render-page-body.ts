@@ -29,11 +29,12 @@ function renderFromBlocks(pageId: string, nome: string, blocks: PageBlock[]): st
 export function renderPageResponse(
   res: VercelResponse,
   page: { id: string; nome: string; html: string | null; page_data: { blocks?: PageBlock[] } },
-  opts?: { cacheControl?: string; experimentId?: string }
+  opts?: { cacheControl?: string; experimentId?: string; vid?: string }
 ) {
   let finalHtml = page.html || renderFromBlocks(page.id, page.nome, page.page_data?.blocks || [])
   if (opts?.experimentId) {
-    finalHtml = finalHtml.replace('<head>', `<head><script>window.KV_EXPERIMENT_ID=${JSON.stringify(opts.experimentId)};</script>`)
+    const vidScript = opts.vid ? `window.KV_VID=${JSON.stringify(opts.vid)};` : ''
+    finalHtml = finalHtml.replace('<head>', `<head><script>window.KV_EXPERIMENT_ID=${JSON.stringify(opts.experimentId)};${vidScript}</script>`)
   }
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
   res.setHeader('Cache-Control', opts?.cacheControl ?? 'public, s-maxage=60, stale-while-revalidate=300')

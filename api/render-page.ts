@@ -5,10 +5,39 @@ import type { PageBlock } from '../src/lib/blocks/types.js'
 
 type PageRow = { id: string; nome: string; html: string | null; page_data: { blocks?: PageBlock[] } }
 
-async function insertView(pageId: string, req: VercelRequest, experimentId?: string) {
+// Robôs e pré-visualizações de link (WhatsApp, Meta, Telegram...) fazem GET
+// na página como um visitante — sem esse filtro inflam as visitas.
+const BOT_UA = /bot|crawl|spider|slurp|facebookexternalhit|facebookcatalog|meta-externalagent|whatsapp|telegram|skypeuripreview|preview|headless|lighthouse|pingdom|uptime|curl|wget|python-requests|axios|node-fetch/i
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+async function insertView(pageId: string, req: VercelRequest, experimentId?: string, vid?: string) {
+  const userAgent = req.headers['user-agent'] || ''
+  if (!userAgent || BOT_UA.test(userAgent)) return
+
   const forwardedFor = req.headers['x-forwarded-for']
   const ip = typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : req.socket.remoteAddress
-  await sql`INSERT INTO page_views (page_id, ip, experiment_id) VALUES (${pageId}, ${ip}, ${experimentId ?? null})`
+  const q = (key: string) => {
+    const v = req.query[key]
+    return (typeof v === 'string' ? v : Array.isArray(v) ? v[0] : '') || null
+  }
+  const referrer = req.headers['referer'] || null
+  await sql`
+    INSERT INTO page_views (
+      page_id, ip, experiment_id, vid,
+      utm_source, utm_medium, utm_campaign, utm_term, utm_content, referrer, user_agent
+    ) VALUES (
+      ${pageId}, ${ip}, ${experimentId ?? null}, ${vid ?? null},
+      ${q('utm_source')}, ${q('utm_medium')}, ${q('utm_campaign')}, ${q('utm_term')}, ${q('utm_content')},
+      ${referrer}, ${userAgent}
+    )
+  `
+}
+
+// Falha ao registrar a visita nunca pode derrubar a página (ex.: deploy que
+// chegou antes da migration das colunas novas).
+function recordView(...args: Parameters<typeof insertView>) {
+  return insertView(...args).catch((error) => console.error('page_views insert error:', error))
 }
 
 function parseCookies(req: VercelRequest): Record<string, string> {
@@ -47,16 +76,25 @@ async function handleExperiment(req: VercelRequest, res: VercelResponse, experim
 
   const cookieName = `exp_${experiment.id}`
   const cookies = parseCookies(req)
+  const setCookies: string[] = []
+
+  let vid = cookies.kv_vid
+  if (!vid || !UUID_RE.test(vid)) {
+    vid = crypto.randomUUID()
+    setCookies.push(`kv_vid=${vid}; HttpOnly; Path=/; Max-Age=31536000; SameSite=Lax`)
+  }
+
   const stickyPageId = cookies[cookieName]
   let page = variants.find((v) => v.id === stickyPageId)
 
   if (!page) {
     page = variants[Math.floor(Math.random() * variants.length)]
-    res.setHeader('Set-Cookie', `${cookieName}=${page.id}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`)
+    setCookies.push(`${cookieName}=${page.id}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`)
   }
+  if (setCookies.length) res.setHeader('Set-Cookie', setCookies)
 
-  await insertView(page.id, req, experiment.id)
-  return renderPageResponse(res, page, { cacheControl: 'private, no-store', experimentId: experiment.id })
+  await recordView(page.id, req, experiment.id, vid)
+  return renderPageResponse(res, page, { cacheControl: 'private, no-store', experimentId: experiment.id, vid })
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -108,7 +146,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     `
     if (entryRows[0]) return await handleExperiment(req, res, entryRows[0].slug as string)
 
-    await insertView(page.id, req)
+    await recordView(page.id, req)
     return renderPageResponse(res, page)
   } catch (error) {
     console.error('api/render-page error:', error)

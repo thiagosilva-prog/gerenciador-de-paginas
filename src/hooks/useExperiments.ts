@@ -6,6 +6,7 @@ export interface ExperimentVariant {
   nome: string
   slug: string
   visitas: number
+  visitantes: number
   conversoes: number
 }
 

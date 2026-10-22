@@ -22,11 +22,25 @@ async function uniqueSlug(base: string): Promise<string> {
 }
 
 async function statsFor(pageId: string, experimentId: string) {
-  const [visitas, conversoes] = await Promise.all([
+  // Visitante único conta só pra variante em que caiu na PRIMEIRA visita —
+  // se a variante dele saiu do teste e ele foi sorteado de novo, não entra
+  // em dobro. Visitas antigas (antes do kv_vid) não têm vid e ficam fora.
+  const [visitas, visitantes, conversoes] = await Promise.all([
     sql`SELECT count(*)::int AS n FROM page_views WHERE page_id = ${pageId} AND experiment_id = ${experimentId}`,
+    sql`
+      SELECT count(*)::int AS n FROM (
+        SELECT DISTINCT ON (vid) vid, page_id FROM page_views
+        WHERE experiment_id = ${experimentId} AND vid IS NOT NULL
+        ORDER BY vid, criado_em
+      ) primeira WHERE primeira.page_id = ${pageId}
+    `,
     sql`SELECT count(*)::int AS n FROM leads WHERE page_id = ${pageId} AND experiment_id = ${experimentId}`,
   ])
-  return { visitas: visitas.rows[0].n as number, conversoes: conversoes.rows[0].n as number }
+  return {
+    visitas: visitas.rows[0].n as number,
+    visitantes: visitantes.rows[0].n as number,
+    conversoes: conversoes.rows[0].n as number,
+  }
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

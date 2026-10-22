@@ -56,6 +56,7 @@ export default function PagesTesteAB() {
             <tr className="border-b border-(--card-border) text-left text-(--text-tertiary)">
               <th className="p-3 font-medium">Página</th>
               <th className="p-3 font-medium">Visitas</th>
+              <th className="p-3 font-medium">Visitantes únicos</th>
               <th className="p-3 font-medium">Conversões</th>
               <th className="p-3 font-medium">Taxa</th>
               <th className="p-3 font-medium">Exibição</th>
@@ -69,8 +70,9 @@ export default function PagesTesteAB() {
                   <button onClick={() => navigate(`/pages/${v.page_id}`)} className="font-medium hover:underline">{v.nome}</button>
                 </td>
                 <td className="p-3">{v.visitas}</td>
+                <td className="p-3">{v.visitantes}</td>
                 <td className="p-3">{v.conversoes}</td>
-                <td className="p-3">{v.visitas ? ((v.conversoes / v.visitas) * 100).toFixed(1) : "0.0"}%</td>
+                <td className="p-3">{v.visitantes ? `${((v.conversoes / v.visitantes) * 100).toFixed(1)}%` : "—"}</td>
                 <td className="p-3">{exhibicaoPct}%</td>
                 <td className="p-3">
                   <DropdownMenu>

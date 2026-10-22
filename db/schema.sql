@@ -110,3 +110,14 @@ create index if not exists experiment_variants_experiment_id_idx on experiment_v
 
 alter table page_views add column if not exists experiment_id uuid references experiments(id) on delete set null;
 alter table leads add column if not exists experiment_id uuid references experiments(id) on delete set null;
+
+alter table page_views add column if not exists vid uuid;
+alter table page_views add column if not exists utm_source text;
+alter table page_views add column if not exists utm_medium text;
+alter table page_views add column if not exists utm_campaign text;
+alter table page_views add column if not exists utm_term text;
+alter table page_views add column if not exists utm_content text;
+alter table page_views add column if not exists referrer text;
+alter table page_views add column if not exists user_agent text;
+
+create index if not exists idx_page_views_experiment_vid on page_views(experiment_id, vid, criado_em);
