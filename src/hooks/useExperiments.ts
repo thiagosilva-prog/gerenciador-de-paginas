@@ -15,6 +15,7 @@ export interface Experiment {
   nome: string
   slug: string
   status: string
+  criado_em: string
   variants: ExperimentVariant[]
 }
 

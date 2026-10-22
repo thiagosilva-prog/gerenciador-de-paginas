@@ -65,7 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!pageId) return res.status(400).json({ error: 'pageId é obrigatório' })
 
       const { rows: expRows } = await sql`
-        SELECT e.id, e.nome, e.slug, e.status
+        SELECT e.id, e.nome, e.slug, e.status, e.criado_em
         FROM experiments e
         JOIN experiment_variants ev ON ev.experiment_id = e.id
         WHERE ev.page_id = ${pageId}
