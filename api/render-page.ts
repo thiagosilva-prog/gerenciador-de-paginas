@@ -92,6 +92,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const page = rows[0] as PageRow | undefined
     if (!page) return sendNotFound(res)
 
+    // A página onde o teste foi criado (primeira variante) vira porta de
+    // entrada: com o teste rodando, o próprio /p/ dela sorteia entre as
+    // variantes — dá pra testar sem trocar o link de uma campanha no ar.
+    // ponytail: "criadora" = variante mais antiga; se ela for removida do
+    // teste, a próxima mais antiga assume. Coluna entry_page_id se incomodar.
+    const { rows: entryRows } = await sql`
+      SELECT e.slug FROM experiments e
+      WHERE e.status = 'running' AND (
+        SELECT ev.page_id FROM experiment_variants ev
+        WHERE ev.experiment_id = e.id
+        ORDER BY ev.criado_em LIMIT 1
+      ) = ${page.id}
+      LIMIT 1
+    `
+    if (entryRows[0]) return await handleExperiment(req, res, entryRows[0].slug as string)
+
     await insertView(page.id, req)
     return renderPageResponse(res, page)
   } catch (error) {
