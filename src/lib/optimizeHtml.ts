@@ -28,42 +28,44 @@ export async function uploadInlineImages(blocks: PageBlock[]): Promise<PageBlock
   return JSON.parse(json)
 }
 
-function readGeneratedCss(iframe: HTMLIFrameElement): string | undefined {
-  const styles = iframe.contentDocument?.head?.querySelectorAll('style:not([type])') || []
-  return [...styles].map((s) => s.textContent || '').find((t) => t.includes('tailwindcss v'))
-}
+// Roda DENTRO do iframe: espera o CDN gerar o CSS e manda pro painel.
+const REPORT_SCRIPT = `<script>(function(){var s=Date.now();function r(){return [].map.call(document.head.querySelectorAll('style:not([type])'),function(e){return e.textContent||''}).filter(function(t){return t.indexOf('tailwindcss v')>-1})[0]}(function p(){if(r())return setTimeout(function(){parent.postMessage({kvTailwindCss:r()},'*')},300);if(Date.now()-s<9500)setTimeout(p,100)})()})()</script>`
 
 // O <script src="cdn.tailwindcss.com"> gera o CSS no navegador de cada visitante
 // (126 KB de JS + compilação; lento principalmente no Safari do iPhone). Aqui o
 // mesmo script roda UMA vez, num iframe escondido do painel, e o CSS resultante
 // entra pronto na página publicada. Se algo falhar, devolve o HTML intacto.
 export async function precompileTailwind(html: string, timeoutMs = 10000): Promise<string> {
-  const cdnScripts = html.match(TAILWIND_CDN_RE)
-  if (!cdnScripts) return html
+  const cdnSrc = html.match(TAILWIND_CDN_RE)?.[0].match(/src=["'](https:\/\/cdn\.tailwindcss\.com[^"'<>\s]*)["']/)?.[1]
+  if (!cdnSrc) return html
 
   // Todo token "com cara de classe" do HTML — inclusive os que só aparecem em
   // <script> (ex.: classList.add('hidden')) — vai num div de amostra, igual ao
   // scan de conteúdo do Tailwind. Tokens que não são classes não geram nada.
   const tokens = [...new Set(html.match(/[^\s"'`<>=]+/g) || [])].join(' ').replace(/&/g, '&amp;')
-  const probe = `<!doctype html><html><head>${cdnScripts[0]}${(html.match(TAILWIND_CONFIG_RE) || []).join('')}${(html.match(TAILWIND_STYLE_RE) || []).join('')}</head><body><div class="${tokens}"></div></body></html>`
+  const probe = `<!doctype html><html><head><script src="${cdnSrc}"></script>${(html.match(TAILWIND_CONFIG_RE) || []).join('')}${(html.match(TAILWIND_STYLE_RE) || []).join('')}</head><body><div class="${tokens}"></div>${REPORT_SCRIPT}</body></html>`
 
+  // sandbox sem allow-same-origin: o iframe ganha origem própria, então os
+  // scripts copiados da página (tailwind.config) não alcançam o painel nem a
+  // sessão de quem está publicando. O CSS volta só por postMessage.
   const iframe = document.createElement('iframe')
+  iframe.setAttribute('sandbox', 'allow-scripts')
   iframe.setAttribute('aria-hidden', 'true')
   iframe.style.cssText = 'position:fixed;left:-10000px;top:0;width:1280px;height:800px;visibility:hidden'
-  document.body.appendChild(iframe)
+  let onMessage: ((e: MessageEvent) => void) | undefined
   try {
     const css = await new Promise<string | null>((resolve) => {
-      const started = Date.now()
-      const poll = () => {
-        // Achou o CSS: espera mais um instante pro CDN terminar e relê.
-        if (readGeneratedCss(iframe)) return setTimeout(() => resolve(readGeneratedCss(iframe) || null), 300)
-        if (Date.now() - started > timeoutMs) return resolve(null)
-        setTimeout(poll, 100)
+      const timer = setTimeout(() => resolve(null), timeoutMs)
+      onMessage = (e: MessageEvent) => {
+        if (e.source !== iframe.contentWindow || typeof e.data?.kvTailwindCss !== 'string') return
+        clearTimeout(timer)
+        resolve(e.data.kvTailwindCss)
       }
+      window.addEventListener('message', onMessage)
       iframe.srcdoc = probe
-      poll()
+      document.body.appendChild(iframe)
     })
-    if (!css) return html
+    if (!css || /<\/style/i.test(css)) return html
 
     // O CDN anexa o CSS no FIM do <head> — mesma posição aqui, pra cascata
     // (quem vence quem) ficar idêntica à de hoje.
@@ -72,6 +74,7 @@ export async function precompileTailwind(html: string, timeoutMs = 10000): Promi
   } catch {
     return html
   } finally {
+    if (onMessage) window.removeEventListener('message', onMessage)
     iframe.remove()
   }
 }
