@@ -5,6 +5,7 @@ import { blockRegistry, BLOCK_CATEGORIES, getBlocksByCategory, getBlockByType } 
 import { type PageBlock, type PageData, type BlockDefinition, type FieldSchema, type SectionStyles } from '../../lib/blocks/types'
 import { editorRenderers } from '../../lib/blocks/editorRenderers'
 import { injectIntegrationScripts } from '../../lib/integrations'
+import { precompileTailwind, uploadInlineImages } from '../../lib/optimizeHtml'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Textarea } from '../../components/ui/textarea'
@@ -340,7 +341,11 @@ export default function PagesEditor() {
 
   async function handlePublish() {
     if (!id || !page) return
-    const renderedHtml = blocks
+    const toastId = toast.loading('Otimizando e publicando...')
+    const publishBlocks = await uploadInlineImages(blocks)
+    if (publishBlocks !== blocks) setBlocks(publishBlocks)
+
+    const renderedHtml = publishBlocks
       .filter((b) => !b.hidden)
       .map((b) => {
         const def = getBlockByType(b.type)
@@ -348,17 +353,17 @@ export default function PagesEditor() {
       })
       .join('\n')
 
-    const finalHtml = injectIntegrationScripts(renderedHtml, page.integrations || {})
+    const finalHtml = await precompileTailwind(injectIntegrationScripts(renderedHtml, page.integrations || {}))
 
     await updatePage.mutateAsync({
       id,
-      page_data: { blocks },
+      page_data: { blocks: publishBlocks },
       html: finalHtml,
       status: 'published',
       publicado_em: new Date().toISOString(),
     })
     setIsDirty(false)
-    toast.success('Página publicada com sucesso!')
+    toast.success('Página publicada com sucesso!', { id: toastId })
   }
 
   const handlePreview = () => {

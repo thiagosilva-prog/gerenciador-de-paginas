@@ -34,6 +34,7 @@ import { ptBR } from "date-fns/locale";
 import { usePage, useUpdatePage, useDeletePage, type PageIntegrations, type PageSettings } from "../../hooks/usePages";
 import { getBlockByType } from "../../lib/blocks/registry";
 import { injectIntegrationScripts } from "../../lib/integrations";
+import { precompileTailwind } from "../../lib/optimizeHtml";
 import { useLeads, useDeleteLead, type Lead } from "../../hooks/useLeads";
 import { useReport } from "../../hooks/useReport";
 import { useDomains, useCreateDomain, useDeleteDomain, type Domain } from "../../hooks/useDomains";
@@ -324,7 +325,7 @@ export default function PageDetail() {
         return def ? def.render(b.data, b.sectionStyles).replace(/\{\{PAGE_ID\}\}/g, id || '') : ''
       })
       .join('\n')
-    const finalHtml = injectIntegrationScripts(renderedHtml, integrations)
+    const finalHtml = await precompileTailwind(injectIntegrationScripts(renderedHtml, integrations))
     await updatePage.mutateAsync({ id: id!, integrations, html: finalHtml })
     setSavingIntegrations(false)
     toast.success('Integrações salvas e aplicadas à página!')

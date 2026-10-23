@@ -666,7 +666,13 @@ function CustomHtmlEditor({ data, onChange }: { data: any; styles: SectionStyles
     applyAndSave()
   }, [selectedElement, applyAndSave])
 
-  const handleImageFile = React.useCallback((file: File) => {
+  // Sobe pro Blob em vez de embutir como base64 (HTML pesado = página lenta).
+  // Se o upload falhar, cai no base64 — a publicação tenta subir de novo.
+  const handleImageFile = React.useCallback(async (file: File) => {
+    try {
+      const res = await fetch(`/api/upload/image?filename=${encodeURIComponent(file.name)}`, { method: 'POST', body: file })
+      if (res.ok) return applyStyle('src', (await res.json()).url)
+    } catch {}
     const reader = new FileReader()
     reader.onload = () => {
       if (typeof reader.result === 'string') applyStyle('src', reader.result)
